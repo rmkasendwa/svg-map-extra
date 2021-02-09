@@ -4,7 +4,21 @@
 	"description": "svg-map-extra is an extended JavaScript library that lets you easily create an interactable world map comparing customizable data for each country inspired by the original svgMap.",
 	"main": "index.js",
 	"scripts": {
+		"start": "webpack-dev-server --output-public-path=/demo/  --mode development --progress --open --hot",
+		"build": "webpack --mode production --progress",
 		"test": "test"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.10.2",
+		"@babel/preset-env": "^7.10.2",
+		"@babel/plugin-proposal-class-properties": "^7.7.4",
+		"@babel/plugin-proposal-object-rest-spread": "^7.8.3",
+		"@babel/plugin-syntax-class-properties": "^7.7.4",
+		"babel-loader": "^8.1.0",
+		"@babel/polyfill": "^7.4.3",
+		"webpack": "^4.43.0",
+		"webpack-cli": "^3.3.11",
+		"webpack-dev-server": "^3.11.0"
 	},
 	"repository": {
 		"type": "git",
