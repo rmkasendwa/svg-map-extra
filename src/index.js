@@ -1,2 +1,1 @@
-const SVGMap = {};
-export default SVGMap;
+export default class SVGMap { };

@@ -1,15 +1,22 @@
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const path = require('path');
 const paths = {
 	src: path.join(__dirname, 'src'),
 	dist: path.join(__dirname, 'dist'),
 };
 module.exports = {
-	entry: [paths.src + '/index.js'],
+	entry: {
+		"svg-map": `${paths.src}/index.js`,
+		"svg-map.min": `${paths.src}/index.js`,
+	},
+	devtool: "source-map",
 	output: {
 		path: paths.dist,
-		filename: 'svg-map.js',
-		library: 'svg-map',
+		filename: "[name].js",
+		library: 'SVGMap',
+		libraryExport: 'default',
 		libraryTarget: 'umd',
+		globalObject: 'this'
 	},
 	module: {
 		rules: [{
@@ -27,5 +34,11 @@ module.exports = {
 				}
 			}
 		}]
+	},
+	optimization: {
+		minimize: true,
+		minimizer: [new UglifyJsPlugin({
+			include: /\.min\.js$/
+		})]
 	}
 };
