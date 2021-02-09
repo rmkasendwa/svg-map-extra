@@ -19,29 +19,29 @@ Include or require `svg-map-extra.min.js` and you are ready to go:
 
 ```javascript
 new SVGMap({
-  targetElement: document.querySelector('.map-target'),
-  data: {
+    targetElement: document.querySelector('.map-target'),
     data: {
-      gdp: {
-        name: 'GDP per capita',
-        format: '{0} USD',
-        thousandSeparator: ',',
-        thresholdMax: 50000,
-        thresholdMin: 1000
-      },
-      change: {
-        name: 'Change to year before',
-        format: '{0} %'
-      }
-    },
-    applyData: 'gdp',
-    values: {
-      AF: { gdp: 587, change: 4.73 },
-      AL: { gdp: 4583, change: 11.09 },
-      DZ: { gdp: 4293, change: 10.01 }
-      // ...
+        data: {
+            gdp: {
+                name: 'GDP per capita',
+                format: '{0} USD',
+                thousandSeparator: ',',
+                thresholdMax: 50000,
+                thresholdMin: 1000
+            },
+            change: {
+                name: 'Change to year before',
+                format: '{0} %'
+            }
+        },
+        applyData: 'gdp',
+        values: {
+            AF: { gdp: 587, change: 4.73 },
+            AL: { gdp: 4583, change: 11.09 },
+            DZ: { gdp: 4293, change: 10.01 }
+            // ...
+        }
     }
-  }
 });
 ```
 
