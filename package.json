@@ -1,0 +1,25 @@
+{
+	"name": "svg-map-extra",
+	"version": "1.0.0",
+	"description": "svg-map-extra is an extended JavaScript library that lets you easily create an interactable world map comparing customizable data for each country inspired by the original svgMap.",
+	"main": "index.js",
+	"scripts": {
+		"test": "test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/rmkasendwa/svg-map-extra.git"
+	},
+	"keywords": [
+		"svg-map",
+		"svg",
+		"map",
+		"world"
+	],
+	"author": "Ronald M. Kasendwa",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/rmkasendwa/svg-map-extra/issues"
+	},
+	"homepage": "https://github.com/rmkasendwa/svg-map-extra#readme"
+}
