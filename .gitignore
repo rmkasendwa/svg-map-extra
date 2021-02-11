@@ -1,7 +1,3 @@
-# CSS and JS maps
-*.js.map
-*.css.map
-
 # npm
 node_modules
 

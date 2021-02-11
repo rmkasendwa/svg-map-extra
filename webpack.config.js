@@ -1,4 +1,5 @@
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
 const paths = {
 	src: path.join(__dirname, 'src'),
@@ -6,8 +7,8 @@ const paths = {
 };
 module.exports = {
 	entry: {
-		"svg-map": `${paths.src}/index.js`,
-		"svg-map.min": `${paths.src}/index.js`,
+		"svg-map": [`${paths.src}/index.js`, `${paths.src}/scss/main.scss`],
+		"svg-map.min": [`${paths.src}/index.js`, `${paths.src}/scss/main.scss`]
 	},
 	devtool: "source-map",
 	output: {
@@ -33,12 +34,18 @@ module.exports = {
 					]
 				}
 			}
+		}, {
+			test: /.(scss|css)$/,
+			exclude: /node_modules/,
+			use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader']
 		}]
 	},
 	optimization: {
 		minimize: true,
 		minimizer: [new UglifyJsPlugin({
 			include: /\.min\.js$/
+		}), new MiniCssExtractPlugin({
+			filename: '[name].css'
 		})]
 	}
 };
