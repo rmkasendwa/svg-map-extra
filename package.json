@@ -43,5 +43,8 @@
 	"bugs": {
 		"url": "https://github.com/rmkasendwa/svg-map-extra/issues"
 	},
-	"homepage": "https://github.com/rmkasendwa/svg-map-extra#readme"
+	"homepage": "https://github.com/rmkasendwa/svg-map-extra#readme",
+	"dependencies": {
+		"svg-pan-zoom": "^3.6.1"
+	}
 }

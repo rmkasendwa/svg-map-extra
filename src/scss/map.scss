@@ -1,4 +1,4 @@
-.svgMap-map-wrapper {
+.svg-map-wrapper {
 	position: relative;
 	width: 100%;
 	padding-top: 50%;
@@ -11,7 +11,7 @@
 	 :focus:not(:focus-visible) {
 		outline: 0;
 	}
-	.svgMap-map-image {
+	.svg-map-image {
 		display: block;
 		position: absolute;
 		top: 0;
@@ -21,7 +21,7 @@
 		margin: 0;
 	}
 	// Controls
-	.svgMap-map-controls-wrapper {
+	.svg-map-controls-wrapper {
 		position: absolute;
 		bottom: 10px;
 		left: 10px;
@@ -31,8 +31,8 @@
 		border-radius: 2px;
 		box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 	}
-	.svgMap-map-controls-zoom,
-	.svgMap-map-controls-move {
+	.svg-map-controls-zoom,
+	.svg-map-controls-move {
 		display: flex;
 		margin-right: 5px;
 		overflow: hidden;
@@ -41,7 +41,7 @@
 			margin-right: 0;
 		}
 	}
-	.svgMap-control-button {
+	.svg-map-control-button {
 		background-color: transparent;
 		border: none;
 		border-radius: 0;
@@ -59,7 +59,7 @@
 		width: 30px;
 		height: 30px;
 		position: relative;
-		&.svgMap-zoom-button {
+		&.svg-map-zoom-button {
 			&:before,
 			&:after {
 				content: '';
@@ -80,26 +80,26 @@
 					background: $textColor;
 				}
 			}
-			&.svgMap-disabled {
+			&.svg-map-disabled {
 				&:before,
 				&:after {
 					background: #ccc;
 				}
 			}
 		}
-		&.svgMap-zoom-in-button {
+		&.svg-map-zoom-in-button {
 			margin: 1px 0 1px 1px;
 			&:after {
 				width: 3px;
 				height: 11px;
 			}
 		}
-		&.svgMap-zoom-out-button {
+		&.svg-map-zoom-out-button {
 			margin: 1px 1px 1px 0;
 		}
 	}
 	// Countries
-	.svgMap-country {
+	.svg-map-country {
 		cursor: pointer;
 		stroke: #fff;
 		stroke-width: 1;
@@ -107,10 +107,10 @@
 		vector-effect: non-scaling-stroke;
 		transition: fill 0.2s, stroke 0.2s;
 		&:hover,
-		&.svgMap-active {
+		&.svg-map-active {
 			stroke: $mapActiveStrokeColor;
 		}
-		&.svgMap-active {
+		&.svg-map-active {
 			stroke-width: $mapActiveStrokeWidth;
 		}
 	}

@@ -22,7 +22,7 @@ export const getColor = (color1, color2, ratio) => {
 	const r = Math.ceil(parseInt(color1.substring(0, 2), 16) * ratio + parseInt(color2.substring(0, 2), 16) * (1 - ratio));
 	const g = Math.ceil(parseInt(color1.substring(2, 4), 16) * ratio + parseInt(color2.substring(2, 4), 16) * (1 - ratio));
 	const b = Math.ceil(parseInt(color1.substring(4, 6), 16) * ratio + parseInt(color2.substring(4, 6), 16) * (1 - ratio));
-	return '#' + this.getHex(r) + this.getHex(g) + this.getHex(b);
+	return '#' + getHex(r) + getHex(g) + getHex(b);
 };
 
 // Get a hex value

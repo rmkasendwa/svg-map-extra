@@ -7,8 +7,8 @@ const paths = {
 };
 module.exports = {
 	entry: {
-		"svg-map": [`${paths.src}/index.js`, `${paths.src}/scss/main.scss`],
-		"svg-map.min": [`${paths.src}/index.js`, `${paths.src}/scss/main.scss`]
+		"svg-map": [`${paths.src}/scss/main.scss`, `${paths.src}/index.js`],
+		"svg-map.min": [`${paths.src}/scss/main.scss`, `${paths.src}/index.js`]
 	},
 	devtool: "source-map",
 	output: {
