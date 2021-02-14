@@ -3556,8 +3556,43 @@ var browserify_default = /*#__PURE__*/__webpack_require__.n(browserify);
     "d": "M969.3,363.1l-1.8-6.7l-0.3-3.9l-2-4.1l-2.3-0.1l-5.5-1.4l-5,0.4l-3.1-2.7h-3.9l-1.8,3.9l-3.7,6.7l-4,2.6 l-5.4,2.9L927,365l-0.9,3.4l-2.1,5.4l1.1,7.9l-4.7,5.3l-2.7,1.7l-4.4,4.4l-5.1,0.7l-2.8,2.4l-0.1,0.1l-3.6,6.5l-3.7,2.3l-2.1,4 l-0.2,3.3l-1.6,3.8l-1.9,1l-3.1,4l-2,4.5l0.3,2.2l-1.9,3.3l-2.2,1.7l-0.3,3l-0.3,2.7l1.2-2.2l21.6,0.1l-0.9-9.2l1.4-3.3l5.2-0.5 l0.2-16.3l17.9,0.3l0.2-9.7l0.1-1.2v-0.4l0,0l0,0l0,0l0.1-7.5l8.9-4.7l5.4-1l4.4-1.7l2.1-3.2l6.3-2.5l0.3-4.7l3.1-0.5l2.5-2.4l7-1 l1-2.5L969.3,363.1z"
   }
 });
+// CONCATENATED MODULE: ./src/svg-map/map.js
+// Reset map
+var resetMapZoom = function resetMapZoom(_ref) {
+  var mapWrapper = _ref.mapWrapper,
+      mapPanZoom = _ref.mapPanZoom;
+  var viewPort = mapWrapper.querySelector('.svg-pan-zoom_viewport');
+  viewPort.style.transition = 'transform .3s';
+  setTimeout(function () {
+    return viewPort.style.transition = '';
+  }, 400);
+  mapPanZoom.reset();
+}; // Set the disabled statuses for buttons
+
+var setControlStatuses = function setControlStatuses(_ref2) {
+  var zoomControlIn = _ref2.zoomControlIn,
+      zoomControlOut = _ref2.zoomControlOut,
+      mapPanZoom = _ref2.mapPanZoom,
+      minZoom = _ref2.minZoom,
+      maxZoom = _ref2.maxZoom;
+  zoomControlIn.classList.remove('svg-map-disabled');
+  zoomControlIn.setAttribute('aria-disabled', 'false');
+  zoomControlOut.classList.remove('svg-map-disabled');
+  zoomControlOut.setAttribute('aria-disabled', 'false');
+
+  if (mapPanZoom.getZoom().toFixed(3) <= minZoom) {
+    zoomControlOut.classList.add('svg-map-disabled');
+    zoomControlOut.setAttribute('aria-disabled', 'true');
+  }
+
+  if (mapPanZoom.getZoom().toFixed(3) >= maxZoom) {
+    zoomControlIn.classList.add('svg-map-disabled');
+    zoomControlIn.setAttribute('aria-disabled', 'true');
+  }
+};
 // CONCATENATED MODULE: ./src/svg-map/utils.js
-// Helper to create an element with a class name
+ // Helper to create an element with a class name
+
 var createElement = function createElement(type, className, appendTo, innerhtml) {
   var element = document.createElement(type);
 
@@ -3590,27 +3625,106 @@ var getColor = function getColor(color1, color2, ratio) {
 var getHex = function getHex(value) {
   value = value.toString(16);
   return ('0' + value).slice(-2);
+}; // Get the name of a country by its ID
+
+var utils_getCountryName = function getCountryName(countryCode) {
+  var countryNames = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : countries;
+  return countryNames[countryCode];
+};
+// CONCATENATED MODULE: ./src/svg-map/tooltip.js
+ // Create the tooltip
+
+var tooltip_createTooltip = function createTooltip() {
+  var tooltip = createElement('div', 'svg-map-tooltip', document.body);
+  var tooltipContentContainer = createElement('div', 'svg-map-tooltip-content-wrapper', tooltip);
+  var tooltipPointer = createElement('div', 'svg-map-tooltip-pointer', tooltip);
+  return {
+    tooltip: tooltip,
+    tooltipContentContainer: tooltipContentContainer,
+    tooltipPointer: tooltipPointer
+  };
+}; // Hide the tooltip
+
+var hideTooltip = function hideTooltip(tooltip) {
+  return tooltip.classList.remove('svg-map-active');
+}; // Move the tooltip
+
+var moveTooltip = function moveTooltip(event, _ref) {
+  var tooltip = _ref.tooltip,
+      tooltipPointer = _ref.tooltipPointer;
+  var x = event.pageX || (event.touches && event.touches[0] ? event.touches[0].pageX : null);
+  var y = event.pageY || (event.touches && event.touches[0] ? event.touches[0].pageY : null);
+
+  if (x && y) {
+    var offsetToWindow = 6;
+    var offsetToPointer = 12;
+    var offsetToPointerFlipped = 32;
+    var wWidth = window.innerWidth;
+    var tWidth = tooltip.offsetWidth;
+    var tHeight = tooltip.offsetHeight; // Adjust pointer when reaching window sides
+
+    var left = x - tWidth / 2;
+
+    if (left <= offsetToWindow) {
+      x = offsetToWindow + tWidth / 2;
+      tooltipPointer.style.marginLeft = left - offsetToWindow + 'px';
+    } else if (left + tWidth >= wWidth - offsetToWindow) {
+      x = wWidth - offsetToWindow - tWidth / 2;
+      tooltipPointer.style.marginLeft = (wWidth - offsetToWindow - event.pageX - tWidth / 2) * -1 + 'px';
+    } else {
+      tooltipPointer.style.marginLeft = '0px';
+    } // Flip tooltip when reaching top window edge
+
+
+    var top = y - offsetToPointer - tHeight;
+
+    if (top <= offsetToWindow) {
+      tooltip.classList.add('svg-map-tooltip-flipped');
+      y += offsetToPointerFlipped;
+    } else {
+      tooltip.classList.remove('svg-map-tooltip-flipped');
+      y -= offsetToPointer;
+    }
+
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+}; // Set the tooltips content
+
+var setTooltipContent = function setTooltipContent(tooltipContent, content) {
+  tooltipContent.innerHTML = '';
+  tooltipContent.append(content);
+}; // Show the tooltip
+
+var showTooltip = function showTooltip(event, _ref2) {
+  var tooltip = _ref2.tooltip,
+      tooltipPointer = _ref2.tooltipPointer;
+  tooltip.classList.add('svg-map-active');
+  moveTooltip(event, {
+    tooltip: tooltip,
+    tooltipPointer: tooltipPointer
+  });
 };
 // CONCATENATED MODULE: ./src/index.js
-function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
-
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
-
-function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
 
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
 
 function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
 
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
@@ -3631,8 +3745,12 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 
 
+
+
 var src_SVGMap = /*#__PURE__*/function () {
   function SVGMap() {
+    var _this = this;
+
     var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
     _classCallCheck(this, SVGMap);
@@ -3641,22 +3759,205 @@ var src_SVGMap = /*#__PURE__*/function () {
       if (!options.targetElement) throw new TypeError('Target element not found');
     }
 
-    this.options = _objectSpread(_objectSpread({}, default_options), options); // Global id
+    this.options = _objectSpread(_objectSpread({}, default_options), options); // Cache wrapper element
 
-    this.id = this.options.targetElementID || btoa(Math.random()); // Cache wrapper element
+    var container = this.options.targetElementID ? document.getElementById(this.options.targetElementID) : this.options.targetElement; // Create the map
+    // Create the tooltip content
 
-    this.wrapper = this.options.targetElementID ? document.getElementById(this.options.targetElementID) : this.options.targetElement; // Create the map
+    var getTooltipContent = function getTooltipContent(countryCode) {
+      var tooltipContentWrapper = createElement('div', 'svg-map-tooltip-content-container');
 
-    this.createMap(); // Apply map data
+      if (_this.options.hideFlag === false) {
+        // Flag
+        var flagContainer = createElement('div', 'svg-map-tooltip-flag-container svg-map-tooltip-flag-container-' + _this.options.flagType, tooltipContentWrapper);
 
-    this.applyData(this.options.data);
-  } // data----------------
+        switch (_this.options.flagType) {
+          case "image":
+            createElement('img', 'svg-map-tooltip-flag', flagContainer).setAttribute('src', _this.options.flagURL.replace('{0}', countryCode.toLowerCase()));
+            break;
 
+          case "emoji":
+            flagContainer.innerHTML = emoji_flags[countryCode];
+            break;
+        }
+      } // Title
+
+
+      createElement('div', 'svg-map-tooltip-title', tooltipContentWrapper).innerHTML = utils_getCountryName(countryCode, _this.options.countryNames); // Content
+
+      var tooltipContent = createElement('div', 'svg-map-tooltip-content', tooltipContentWrapper);
+
+      if (_this.options.data && _this.options.data.values[countryCode]) {
+        var tooltipContentTable = '<table>';
+        Object.keys(_this.options.data.data).forEach(function (key) {
+          var value = _this.options.data.values[countryCode][key];
+          var item = typeof _this.options.data.data[key] === "function" ? _this.options.data.data[key](value) : _this.options.data.data[key];
+          item.floatingNumbers && (value = value.toFixed(1));
+          item.thousandSeparator && (value = numberWithCommas(value, item.thousandSeparator));
+          value = item.format ? item.format.replace('{0}', "<span>".concat(value, "</span>")) : "<span>".concat(value, "</span>");
+          tooltipContentTable += "\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<td>".concat(item.name || '', "</td>\n\t\t\t\t\t\t<td>").concat(value, "</td>\n\t\t\t\t\t</tr>\n\t\t\t\t");
+        });
+        tooltipContentTable += '</table>';
+        tooltipContent.innerHTML = tooltipContentTable;
+      } else {
+        createElement('div', 'svg-map-tooltip-no-data', tooltipContent).innerHTML = _this.options.noDataText;
+      }
+
+      return tooltipContentWrapper;
+    }; // Zoom map
+
+
+    var zoomMap = function zoomMap(buttonControl, direction) {
+      if (buttonControl.classList.contains('svg-map-disabled')) return false;
+
+      _this.mapPanZoom[direction == 'in' ? 'zoomIn' : 'zoomOut']();
+    }; // Create the tooltip
+
+
+    var _createTooltip = tooltip_createTooltip(),
+        tooltip = _createTooltip.tooltip,
+        tooltipContentContainer = _createTooltip.tooltipContentContainer,
+        tooltipPointer = _createTooltip.tooltipPointer; // Create map wrappers
+
+
+    this.wrapper = createElement('div', 'svg-map-wrapper', container);
+    var mapImage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    mapImage.setAttribute('viewBox', '0 0 2000 1001');
+    mapImage.classList.add('svg-map-image');
+    this.wrapper.appendChild(mapImage); // Add controls
+
+    var mapControlsWrapper = createElement('div', 'svg-map-controls-wrapper', this.wrapper);
+    var zoomContainer = createElement('div', 'svg-map-controls-zoom', mapControlsWrapper);
+    var zoomControlIn = createElement('button', "svg-map-control-button svg-map-zoom-button svg-map-zoom-in-button", zoomContainer);
+    var zoomControlOut = createElement('button', "svg-map-control-button svg-map-zoom-button svg-map-zoom-out-button", zoomContainer);
+    [[zoomControlIn, 'in'], [zoomControlOut, 'out']].forEach(function (_ref) {
+      var _ref2 = _slicedToArray(_ref, 2),
+          buttonControl = _ref2[0],
+          direction = _ref2[1];
+
+      buttonControl.type = 'button';
+      buttonControl.addEventListener('click', function () {
+        return zoomMap(buttonControl, direction);
+      });
+      zoomControlIn.setAttribute('aria-label', "Zoom ".concat(direction));
+    }); // Fix countries
+
+    var localMapPaths = _objectSpread({}, map_paths);
+
+    if (!this.options.countries.EH) {
+      localMapPaths.MA.d = localMapPaths['MA-EH'].d;
+      delete localMapPaths.EH;
+    }
+
+    delete localMapPaths['MA-EH']; // Add map elements
+
+    Object.keys(localMapPaths).filter(function (countryCode) {
+      return localMapPaths[countryCode].d;
+    }).forEach(function (countryCode) {
+      var countryElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      countryElement.setAttribute('d', localMapPaths[countryCode].d);
+      countryElement.setAttribute('data-id', countryCode);
+      countryElement.classList.add('svg-map-country');
+      mapImage.appendChild(countryElement);
+      ['mouseenter', 'touchdown'].forEach(function (event) {
+        return countryElement.addEventListener(event, function () {
+          return countryElement.closest('g').appendChild(countryElement);
+        });
+      }); // TODO Tooltip events
+      // Make Country fixed on click
+
+      /* countryElement.addEventListener('click', () => {
+        const countryCode = countryElement.getAttribute('data-id');
+        console.log(countryCode);
+      });*/
+      // Tooltip events
+      // Add tooltip when touch is used
+
+      countryElement.addEventListener('touchstart', function (event) {
+        setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+        showTooltip(event, {
+          tooltip: tooltip,
+          tooltipPointer: tooltipPointer
+        });
+        moveTooltip(event, {
+          tooltip: tooltip,
+          tooltipPointer: tooltipPointer
+        });
+      });
+      countryElement.addEventListener('mouseenter', function (event) {
+        setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+        showTooltip(event, {
+          tooltip: tooltip,
+          tooltipPointer: tooltipPointer
+        });
+      });
+      countryElement.addEventListener('mousemove', function (event) {
+        return moveTooltip(event, {
+          tooltip: tooltip,
+          tooltipPointer: tooltipPointer
+        });
+      }); // Hide tooltip when event is mouseleav or touchend
+
+      ['mouseleave', 'touchend'].forEach(function (event) {
+        return countryElement.addEventListener(event, function () {
+          return hideTooltip(tooltip);
+        });
+      });
+    }); // Init pan zoom
+
+    this.mapPanZoom = browserify_default()(mapImage, {
+      zoomEnabled: true,
+      fit: true,
+      center: true,
+      minZoom: this.options.minZoom,
+      maxZoom: this.options.maxZoom,
+      zoomScaleSensitivity: this.options.zoomScaleSensitivity,
+      controlIconsEnabled: false,
+      mouseWheelZoomEnabled: this.options.mouseWheelZoomEnabled,
+      // TODO Only with key pressed
+      onZoom: function onZoom() {
+        return setControlStatuses({
+          mapPanZoom: _this.mapPanZoom,
+          maxZoom: _this.options.maxZoom,
+          minZoom: _this.options.minZoom,
+          zoomControlIn: zoomControlIn,
+          zoomControlOut: zoomControlOut
+        });
+      },
+      beforePan: function beforePan(oldPan, newPan) {
+        var gutterWidth = _this.wrapper.offsetWidth * 0.85;
+        var gutterHeight = _this.wrapper.offsetHeight * 0.85;
+
+        var sizes = _this.mapPanZoom.getSizes();
+
+        var leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth;
+        var rightLimit = sizes.width - gutterWidth - sizes.viewBox.x * sizes.realZoom;
+        var topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight;
+        var bottomLimit = sizes.height - gutterHeight - sizes.viewBox.y * sizes.realZoom;
+        return {
+          x: Math.max(leftLimit, Math.min(rightLimit, newPan.x)),
+          y: Math.max(topLimit, Math.min(bottomLimit, newPan.y))
+        };
+      }
+    }); // Init pan zoom
+
+    this.mapPanZoom.zoom(this.options.initialZoom); // Initial zoom statuses
+
+    setControlStatuses({
+      mapPanZoom: this.mapPanZoom,
+      maxZoom: this.options.maxZoom,
+      minZoom: this.options.minZoom,
+      zoomControlIn: zoomControlIn,
+      zoomControlOut: zoomControlOut
+    }); // Apply map data
+
+    this.options.data && this.applyData(this.options.data);
+  }
 
   _createClass(SVGMap, [{
     key: "applyData",
     value: function applyData(data) {
-      var _this = this;
+      var _this2 = this;
 
       this.options.data = data;
       var min, max; // Get highest and lowest value
@@ -3672,28 +3973,29 @@ var src_SVGMap = /*#__PURE__*/function () {
       data.data[data.applyData].thresholdMin && (min = Math.max(min, data.data[data.applyData].thresholdMin)); // Loop through countries and set colors
 
       Object.keys(countries).forEach(function (countryCode) {
-        var element = document.getElementById("".concat(_this.id, "-map-country-").concat(countryCode));
+        var element = _this2.wrapper.querySelector("[data-id=\"".concat(countryCode, "\"]"));
+
         if (!element) return;
 
         if (!data.values[countryCode]) {
-          element.setAttribute('fill', _this.options.colorNoData);
+          element.setAttribute('fill', _this2.options.colorNoData);
           return;
         }
 
         var value = Math.max(min, parseInt(data.values[countryCode][data.applyData], 10));
         var ratio = max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
-        var color = getColor(_this.options.colorMax, _this.options.colorMin, ratio);
+        var color = getColor(_this2.options.colorMax, _this2.options.colorMin, ratio);
         element.setAttribute('fill', color);
       });
 
       if (this.options.fitToData) {
-        var _this$mapWrapper = this.mapWrapper,
-            mapWidth = _this$mapWrapper.offsetWidth,
-            mapHeight = _this$mapWrapper.offsetHeight;
+        var _this$wrapper = this.wrapper,
+            mapWidth = _this$wrapper.offsetWidth,
+            mapHeight = _this$wrapper.offsetHeight;
         var scaleFactor = mapWidth / (mapWidth > mapHeight ? 2000 : 1001);
         var mapCenterPoint = [mapWidth / 2, mapHeight / 2];
         var points = Object.keys(data.values).map(function (countryCode) {
-          return _this.mapImage.querySelector("[data-id=\"".concat(countryCode, "\"]"));
+          return _this2.wrapper.querySelector("[data-id=\"".concat(countryCode, "\"]"));
         }).filter(function (path) {
           return path != null;
         }).reduce(function (accumulator, path) {
@@ -3733,30 +4035,33 @@ var src_SVGMap = /*#__PURE__*/function () {
             return a.absoluteCoordinates;
           })));
         }, []);
-        this.resetMapZoom();
+        resetMapZoom({
+          mapWrapper: this.wrapper,
+          mapPanZoom: this.mapPanZoom
+        });
 
         if (points.length > 0) {
-          var minX = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref) {
-            var _ref2 = _slicedToArray(_ref, 1),
-                x = _ref2[0];
+          var minX = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref3) {
+            var _ref4 = _slicedToArray(_ref3, 1),
+                x = _ref4[0];
 
             return x;
           })));
-          var minY = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref3) {
-            var _ref4 = _slicedToArray(_ref3, 2),
-                y = _ref4[1];
+          var minY = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref5) {
+            var _ref6 = _slicedToArray(_ref5, 2),
+                y = _ref6[1];
 
             return y;
           })));
-          var maxX = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref5) {
-            var _ref6 = _slicedToArray(_ref5, 1),
-                x = _ref6[0];
+          var maxX = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref7) {
+            var _ref8 = _slicedToArray(_ref7, 1),
+                x = _ref8[0];
 
             return x;
           })));
-          var maxY = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref7) {
-            var _ref8 = _slicedToArray(_ref7, 2),
-                y = _ref8[1];
+          var maxY = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref9) {
+            var _ref10 = _slicedToArray(_ref9, 2),
+                y = _ref10[1];
 
             return y;
           })));
@@ -3771,288 +4076,6 @@ var src_SVGMap = /*#__PURE__*/function () {
           this.mapPanZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
         }
       }
-    } // Map-----------------
-    // Create the SVG map
-
-  }, {
-    key: "createMap",
-    value: function createMap() {
-      var _this2 = this;
-
-      // Create the tooltip
-      this.createTooltip(); // Create map wrappers
-
-      this.mapWrapper = createElement('div', 'svg-map-wrapper', this.wrapper);
-      this.mapImage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      this.mapImage.setAttribute('viewBox', '0 0 2000 1001');
-      this.mapImage.classList.add('svg-map-image');
-      this.mapWrapper.appendChild(this.mapImage); // Add controls
-
-      var mapControlsWrapper = createElement('div', 'svg-map-controls-wrapper', this.mapWrapper);
-      var zoomContainer = createElement('div', 'svg-map-controls-zoom', mapControlsWrapper);
-      ['in', 'out'].forEach(function (item) {
-        var zoomControlName = 'zoomControl' + item.charAt(0).toUpperCase() + item.slice(1);
-        _this2[zoomControlName] = createElement('button', "svg-map-control-button svg-map-zoom-button svg-map-zoom-".concat(item, "-button"), zoomContainer);
-        _this2[zoomControlName].type = 'button';
-
-        _this2[zoomControlName].addEventListener('click', function () {
-          return _this2.zoomMap(item);
-        });
-      }); // Add accessible names to zoom controls
-
-      this.zoomControlIn.setAttribute('aria-label', 'Zoom in');
-      this.zoomControlOut.setAttribute('aria-label', 'Zoom out'); // Fix countries
-
-      var localMapPaths = _objectSpread({}, map_paths);
-
-      if (!this.options.countries.EH) {
-        localMapPaths.MA.d = localMapPaths['MA-EH'].d;
-        delete localMapPaths.EH;
-      }
-
-      delete localMapPaths['MA-EH']; // Add map elements
-
-      Object.keys(localMapPaths).filter(function (countryCode) {
-        return localMapPaths[countryCode].d;
-      }).forEach(function (countryCode) {
-        var countryElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        countryElement.setAttribute('d', localMapPaths[countryCode].d);
-        countryElement.setAttribute('id', "".concat(_this2.id, "-map-country-").concat(countryCode));
-        countryElement.setAttribute('data-id', countryCode);
-        countryElement.classList.add('svg-map-country');
-
-        _this2.mapImage.appendChild(countryElement);
-
-        ['mouseenter', 'touchdown'].forEach(function (event) {
-          return countryElement.addEventListener(event, function () {
-            return countryElement.closest('g').appendChild(countryElement);
-          });
-        }); // TODO Tooltip events
-        // Make Country fixed on click
-
-        /* countryElement.addEventListener('click', () => {
-          const countryCode = countryElement.getAttribute('data-id');
-          console.log(countryCode);
-        });*/
-        // Tooltip events
-        // Add tooltip when touch is used
-
-        countryElement.addEventListener('touchstart', function (event) {
-          _this2.setTooltipContent(_this2.getTooltipContent(countryCode));
-
-          _this2.showTooltip(event);
-
-          _this2.moveTooltip(event);
-        });
-        countryElement.addEventListener('mouseenter', function (event) {
-          _this2.setTooltipContent(_this2.getTooltipContent(countryCode));
-
-          _this2.showTooltip(event);
-        });
-        countryElement.addEventListener('mousemove', function (event) {
-          return _this2.moveTooltip(event);
-        }); // Hide tooltip when event is mouseleav or touchend
-
-        ['mouseleave', 'touchend'].forEach(function (event) {
-          return countryElement.addEventListener(event, function () {
-            return _this2.hideTooltip();
-          });
-        });
-      }); // Init pan zoom
-
-      this.mapPanZoom = browserify_default()(this.mapImage, {
-        zoomEnabled: true,
-        fit: true,
-        center: true,
-        minZoom: this.options.minZoom,
-        maxZoom: this.options.maxZoom,
-        zoomScaleSensitivity: this.options.zoomScaleSensitivity,
-        controlIconsEnabled: false,
-        mouseWheelZoomEnabled: this.options.mouseWheelZoomEnabled,
-        // TODO Only with key pressed
-        onZoom: function onZoom() {
-          return _this2.setControlStatuses();
-        },
-        beforePan: function beforePan(oldPan, newPan) {
-          var gutterWidth = _this2.mapWrapper.offsetWidth * 0.85;
-          var gutterHeight = _this2.mapWrapper.offsetHeight * 0.85;
-
-          var sizes = _this2.mapPanZoom.getSizes();
-
-          var leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth;
-          var rightLimit = sizes.width - gutterWidth - sizes.viewBox.x * sizes.realZoom;
-          var topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight;
-          var bottomLimit = sizes.height - gutterHeight - sizes.viewBox.y * sizes.realZoom;
-          return {
-            x: Math.max(leftLimit, Math.min(rightLimit, newPan.x)),
-            y: Math.max(topLimit, Math.min(bottomLimit, newPan.y))
-          };
-        }
-      }); // Init pan zoom
-
-      this.mapPanZoom.zoom(this.options.initialZoom); // Initial zoom statuses
-
-      this.setControlStatuses();
-    } // Create the tooltip content
-
-  }, {
-    key: "getTooltipContent",
-    value: function getTooltipContent(countryCode) {
-      var _this3 = this;
-
-      var tooltipContentWrapper = createElement('div', 'svg-map-tooltip-content-container');
-
-      if (this.options.hideFlag === false) {
-        // Flag
-        var flagContainer = createElement('div', 'svg-map-tooltip-flag-container svg-map-tooltip-flag-container-' + this.options.flagType, tooltipContentWrapper);
-
-        if (this.options.flagType === 'image') {
-          createElement('img', 'svg-map-tooltip-flag', flagContainer).setAttribute('src', this.options.flagURL.replace('{0}', countryCode.toLowerCase()));
-        } else if (this.options.flagType === 'emoji') {
-          flagContainer.innerHTML = emoji_flags[countryCode];
-        }
-      } // Title
-
-
-      createElement('div', 'svg-map-tooltip-title', tooltipContentWrapper).innerHTML = this.getCountryName(countryCode); // Content
-
-      var tooltipContent = createElement('div', 'svg-map-tooltip-content', tooltipContentWrapper);
-
-      if (!this.options.data.values[countryCode]) {
-        createElement('div', 'svg-map-tooltip-no-data', tooltipContent).innerHTML = this.options.noDataText;
-      } else {
-        var tooltipContentTable = '<table>';
-        Object.keys(this.options.data.data).forEach(function (key) {
-          var value = _this3.options.data.values[countryCode][key];
-          var item = typeof _this3.options.data.data[key] === "function" ? _this3.options.data.data[key](value) : _this3.options.data.data[key];
-          item.floatingNumbers && (value = value.toFixed(1));
-          item.thousandSeparator && (value = numberWithCommas(value, item.thousandSeparator));
-          value = item.format ? item.format.replace('{0}', "<span>".concat(value, "</span>")) : "<span>".concat(value, "</span>");
-          tooltipContentTable += "\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<td>".concat(item.name || '', "</td>\n\t\t\t\t\t\t<td>").concat(value, "</td>\n\t\t\t\t\t</tr>\n\t\t\t\t");
-        });
-        tooltipContentTable += '</table>';
-        tooltipContent.innerHTML = tooltipContentTable;
-      }
-
-      return tooltipContentWrapper;
-    } // Set the disabled statuses for buttons
-
-  }, {
-    key: "setControlStatuses",
-    value: function setControlStatuses() {
-      this.zoomControlIn.classList.remove('svg-map-disabled');
-      this.zoomControlIn.setAttribute('aria-disabled', 'false');
-      this.zoomControlOut.classList.remove('svg-map-disabled');
-      this.zoomControlOut.setAttribute('aria-disabled', 'false');
-
-      if (this.mapPanZoom.getZoom().toFixed(3) <= this.options.minZoom) {
-        this.zoomControlOut.classList.add('svg-map-disabled');
-        this.zoomControlOut.setAttribute('aria-disabled', 'true');
-      }
-
-      if (this.mapPanZoom.getZoom().toFixed(3) >= this.options.maxZoom) {
-        this.zoomControlIn.classList.add('svg-map-disabled');
-        this.zoomControlIn.setAttribute('aria-disabled', 'true');
-      }
-    } // Zoom map
-
-  }, {
-    key: "zoomMap",
-    value: function zoomMap(direction) {
-      if (this['zoomControl' + direction.charAt(0).toUpperCase() + direction.slice(1)].classList.contains('svg-map-disabled')) return false;
-      this.mapPanZoom[direction == 'in' ? 'zoomIn' : 'zoomOut']();
-    } // Reset map
-
-  }, {
-    key: "resetMapZoom",
-    value: function resetMapZoom() {
-      var viewPort = this.mapWrapper.querySelector('.svg-pan-zoom_viewport');
-      viewPort.style.transition = 'transform .3s';
-      setTimeout(function () {
-        return viewPort.style.transition = '';
-      }, 400);
-      this.mapPanZoom.reset();
-    } // Tooltips------------
-    // Create the tooltip
-
-  }, {
-    key: "createTooltip",
-    value: function createTooltip() {
-      if (this.tooltip) return false;
-      this.tooltip = createElement('div', 'svg-map-tooltip', document.getElementsByTagName('body')[0]);
-      this.tooltipContent = createElement('div', 'svg-map-tooltip-content-wrapper', this.tooltip);
-      this.tooltipPointer = createElement('div', 'svg-map-tooltip-pointer', this.tooltip);
-    } // Set the tooltips content
-
-  }, {
-    key: "setTooltipContent",
-    value: function setTooltipContent(content) {
-      if (this.tooltip) {
-        this.tooltipContent.innerHTML = '';
-        this.tooltipContent.append(content);
-      }
-    } // Show the tooltip
-
-  }, {
-    key: "showTooltip",
-    value: function showTooltip(event) {
-      this.tooltip.classList.add('svg-map-active');
-      this.moveTooltip(event);
-    } // Hide the tooltip
-
-  }, {
-    key: "hideTooltip",
-    value: function hideTooltip() {
-      this.tooltip.classList.remove('svg-map-active');
-    } // Move the tooltip
-
-  }, {
-    key: "moveTooltip",
-    value: function moveTooltip(event) {
-      var x = event.pageX || (event.touches && event.touches[0] ? event.touches[0].pageX : null);
-      var y = event.pageY || (event.touches && event.touches[0] ? event.touches[0].pageY : null);
-
-      if (x && y) {
-        var offsetToWindow = 6;
-        var offsetToPointer = 12;
-        var offsetToPointerFlipped = 32;
-        var wWidth = window.innerWidth;
-        var tWidth = this.tooltip.offsetWidth;
-        var tHeight = this.tooltip.offsetHeight; // Adjust pointer when reaching window sides
-
-        var left = x - tWidth / 2;
-
-        if (left <= offsetToWindow) {
-          x = offsetToWindow + tWidth / 2;
-          this.tooltipPointer.style.marginLeft = left - offsetToWindow + 'px';
-        } else if (left + tWidth >= wWidth - offsetToWindow) {
-          x = wWidth - offsetToWindow - tWidth / 2;
-          this.tooltipPointer.style.marginLeft = (wWidth - offsetToWindow - event.pageX - tWidth / 2) * -1 + 'px';
-        } else {
-          this.tooltipPointer.style.marginLeft = '0px';
-        } // Flip tooltip when reaching top window edge
-
-
-        var top = y - offsetToPointer - tHeight;
-
-        if (top <= offsetToWindow) {
-          this.tooltip.classList.add('svg-map-tooltip-flipped');
-          y += offsetToPointerFlipped;
-        } else {
-          this.tooltip.classList.remove('svg-map-tooltip-flipped');
-          y -= offsetToPointer;
-        }
-
-        this.tooltip.style.left = x + 'px';
-        this.tooltip.style.top = y + 'px';
-      }
-    } // Utils-----------------------
-    // Get the name of a country by its ID
-
-  }, {
-    key: "getCountryName",
-    value: function getCountryName(countryCode) {
-      return this.options.countryNames && this.options.countryNames[countryCode] ? this.options.countryNames[countryCode] : countries[countryCode];
     }
   }]);
 

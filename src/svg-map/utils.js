@@ -1,3 +1,5 @@
+import countries from './countries';
+
 // Helper to create an element with a class name
 export const createElement = (type, className, appendTo, innerhtml) => {
 	const element = document.createElement(type);
@@ -30,3 +32,6 @@ export const getHex = value => {
 	value = value.toString(16);
 	return ('0' + value).slice(-2);
 };
+
+// Get the name of a country by its ID
+export const getCountryName = (countryCode, countryNames = countries) => countryNames[countryCode];
