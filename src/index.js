@@ -1,11 +1,12 @@
 import svgPanZoom from 'svg-pan-zoom';
+import $ from 'cash-dom';
 import countries from './svg-map/countries';
 import defaultOptions from './svg-map/default-options';
 import emojiFlags from './svg-map/emoji-flags';
 import mapPaths from './svg-map/map-paths';
 import { resetMapZoom, setControlStatuses } from './svg-map/map';
 import { createTooltip, hideTooltip, moveTooltip, setTooltipContent, showTooltip } from './svg-map/tooltip';
-import { createElement, getColor, getCountryName, numberWithCommas } from './svg-map/utils';
+import { createElement, getColor, getCountryName } from './svg-map/utils';
 export default class SVGMap {
 	constructor(options = {}) {
 		if (!options.targetElementID || !document.getElementById(options.targetElementID)) {
@@ -39,22 +40,7 @@ export default class SVGMap {
 			// Content
 			const tooltipContent = createElement('div', 'svg-map-tooltip-content', tooltipContentWrapper);
 			if (this.options.data && this.options.data.values[countryCode]) {
-				let tooltipContentTable = '<table>';
-				Object.keys(this.options.data.data).forEach(key => {
-					let value = this.options.data.values[countryCode][key];
-					const item = typeof this.options.data.data[key] === "function" ? this.options.data.data[key](value) : this.options.data.data[key];
-					item.floatingNumbers && (value = value.toFixed(1));
-					item.thousandSeparator && (value = numberWithCommas(value, item.thousandSeparator));
-					value = item.format ? item.format.replace('{0}', `<span>${value}</span>`) : `<span>${value}</span>`;
-					tooltipContentTable += `
-					<tr>
-						<td>${item.name || ''}</td>
-						<td>${value}</td>
-					</tr>
-				`;
-				});
-				tooltipContentTable += '</table>';
-				tooltipContent.innerHTML = tooltipContentTable;
+				$(tooltipContent).append(this.options.getTooltipContent(this.options.data.data, this.options.data.values, countryCode));
 			} else {
 				createElement('div', 'svg-map-tooltip-no-data', tooltipContent).innerHTML = this.options.noDataText;
 			}
@@ -64,7 +50,7 @@ export default class SVGMap {
 		// Zoom map
 		const zoomMap = (buttonControl, direction) => {
 			if (buttonControl.classList.contains('svg-map-disabled')) return false;
-			this.mapPanZoom[direction == 'in' ? 'zoomIn' : 'zoomOut']();
+			this.panZoom[direction == 'in' ? 'zoomIn' : 'zoomOut']();
 		};
 
 		// Create the tooltip
@@ -136,7 +122,7 @@ export default class SVGMap {
 		});
 
 		// Init pan zoom
-		this.mapPanZoom = svgPanZoom(mapImage, {
+		this.panZoom = svgPanZoom(mapImage, {
 			zoomEnabled: true,
 			fit: true,
 			center: true,
@@ -145,11 +131,11 @@ export default class SVGMap {
 			zoomScaleSensitivity: this.options.zoomScaleSensitivity,
 			controlIconsEnabled: false,
 			mouseWheelZoomEnabled: this.options.mouseWheelZoomEnabled, // TODO Only with key pressed
-			onZoom: () => setControlStatuses({ mapPanZoom: this.mapPanZoom, maxZoom: this.options.maxZoom, minZoom: this.options.minZoom, zoomControlIn: zoomControlIn, zoomControlOut: zoomControlOut }),
+			onZoom: () => setControlStatuses({ mapPanZoom: this.panZoom, maxZoom: this.options.maxZoom, minZoom: this.options.minZoom, zoomControlIn: zoomControlIn, zoomControlOut: zoomControlOut }),
 			beforePan: (oldPan, newPan) => {
 				const gutterWidth = this.wrapper.offsetWidth * 0.85;
 				const gutterHeight = this.wrapper.offsetHeight * 0.85;
-				const sizes = this.mapPanZoom.getSizes();
+				const sizes = this.panZoom.getSizes();
 				const leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth;
 				const rightLimit = sizes.width - gutterWidth - (sizes.viewBox.x * sizes.realZoom);
 				const topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight;
@@ -163,13 +149,16 @@ export default class SVGMap {
 
 
 		// Init pan zoom
-		this.mapPanZoom.zoom(this.options.initialZoom);
+		this.panZoom.zoom(this.options.initialZoom);
 
 		// Initial zoom statuses
-		setControlStatuses({ mapPanZoom: this.mapPanZoom, maxZoom: this.options.maxZoom, minZoom: this.options.minZoom, zoomControlIn: zoomControlIn, zoomControlOut: zoomControlOut });
+		setControlStatuses({ mapPanZoom: this.panZoom, maxZoom: this.options.maxZoom, minZoom: this.options.minZoom, zoomControlIn: zoomControlIn, zoomControlOut: zoomControlOut });
 
 		// Apply map data
 		this.options.data && this.applyData(this.options.data);
+		this.destroy = () => {
+			tooltip.remove();
+		};
 	}
 	applyData(data) {
 		this.options.data = data;
@@ -229,7 +218,7 @@ export default class SVGMap {
 				});
 				return [...accumulator, ...pathDefinition.map(a => a.absoluteCoordinates)];
 			}, []);
-			resetMapZoom({ mapWrapper: this.wrapper, mapPanZoom: this.mapPanZoom });
+			resetMapZoom({ mapWrapper: this.wrapper, mapPanZoom: this.panZoom });
 			if (points.length > 0) {
 				const minX = Math.min(...points.map(([x]) => x));
 				const minY = Math.min(...points.map(([, y]) => y));
@@ -239,8 +228,8 @@ export default class SVGMap {
 				const boundingBoxHeight = maxY - minY;
 				const xZoomFactor = 2000 * scaleFactor / boundingBoxWidth;
 				const yZoomFactor = 1001 * scaleFactor / boundingBoxHeight;
-				this.mapPanZoom.pan({ x: mapCenterPoint[0] - (minX + boundingBoxWidth / 2), y: mapCenterPoint[1] - (minY + boundingBoxHeight / 2) });
-				this.mapPanZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
+				this.panZoom.pan({ x: mapCenterPoint[0] - (minX + boundingBoxWidth / 2), y: mapCenterPoint[1] - (minY + boundingBoxHeight / 2) });
+				this.panZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
 			}
 		}
 	}
