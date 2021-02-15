@@ -1,3 +1,4 @@
+import $ from 'cash-dom';
 import { numberWithCommas } from './utils';
 // Default options, pass a custom options object to overwrite specific
 export default {
@@ -45,21 +46,20 @@ export default {
 
 	// Get country tooltip content
 	getTooltipContent: (schema, values, countryCode) => {
-		let tooltipContentTable = '<table class="svg-map-tooltip-content-table">';
+		let tooltipContentTable = $('<table class="svg-map-tooltip-content-table">');
 		Object.keys(schema).forEach(key => {
 			let value = values[countryCode][key];
 			const item = typeof schema[key] === "function" ? schema[key](value) : schema[key];
 			item.floatingNumbers && (value = value.toFixed(1));
 			item.thousandSeparator && (value = numberWithCommas(value, item.thousandSeparator));
 			value = item.format ? item.format.replace('{0}', `<span>${value}</span>`) : `<span>${value}</span>`;
-			tooltipContentTable += `
+			tooltipContentTable.append(`
 				<tr>
 					<td>${item.name || ''}</td>
 					<td>${value}</td>
 				</tr>
-			`;
+			`);
 		});
-		tooltipContentTable += '</table>';
 		return tooltipContentTable;
 	}
 };

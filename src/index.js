@@ -1,4 +1,4 @@
-import svgPanZoom from 'svg-pan-zoom';
+import SVGPanZoom from 'svg-pan-zoom';
 import $ from 'cash-dom';
 import countries from './svg-map/countries';
 import defaultOptions from './svg-map/default-options';
@@ -6,7 +6,7 @@ import emojiFlags from './svg-map/emoji-flags';
 import mapPaths from './svg-map/map-paths';
 import { resetMapZoom, setControlStatuses } from './svg-map/map';
 import { createTooltip, hideTooltip, moveTooltip, setTooltipContent, showTooltip } from './svg-map/tooltip';
-import { createElement, getColor, getCountryName } from './svg-map/utils';
+import { getColor, getCountryName } from './svg-map/utils';
 export default class SVGMap {
 	constructor(options = {}) {
 		if (!options.targetElementID || !document.getElementById(options.targetElementID)) {
@@ -14,42 +14,41 @@ export default class SVGMap {
 		}
 		this.options = { ...defaultOptions, ...options };
 
-		// Cache wrapper element
 		const container = this.options.targetElementID ? document.getElementById(this.options.targetElementID) : this.options.targetElement;
 
 		// Create the map
 		// Create the tooltip content
 		const getTooltipContent = countryCode => {
-			const tooltipContentWrapper = createElement('div', 'svg-map-tooltip-content-container');
+			const tooltipContentWrapper = $('<div class="svg-map-tooltip-content-container">');
 			if (this.options.hideFlag === false) {
 				// Flag
-				const flagContainer = createElement('div', 'svg-map-tooltip-flag-container svg-map-tooltip-flag-container-' + this.options.flagType, tooltipContentWrapper);
+				const flagContainer = $(`<div class="svg-map-tooltip-flag-container svg-map-tooltip-flag-container-${this.options.flagType}">`).appendTo(tooltipContentWrapper);
 				switch (this.options.flagType) {
 					case "image":
-						createElement('img', 'svg-map-tooltip-flag', flagContainer).setAttribute('src', this.options.flagURL.replace('{0}', countryCode.toLowerCase()));
+						flagContainer.append($('<img class="svg-map-tooltip-flag">').attr('src', this.options.flagURL.replace('{0}', countryCode.toLowerCase())));
 						break;
 					case "emoji":
-						flagContainer.innerHTML = emojiFlags[countryCode];
+						flagContainer.html(emojiFlags[countryCode]);
 						break;
 				}
 			}
 
 			// Title
-			createElement('div', 'svg-map-tooltip-title', tooltipContentWrapper).innerHTML = getCountryName(countryCode, this.options.countryNames);
+			tooltipContentWrapper.append($('<div class="svg-map-tooltip-title">').html(getCountryName(countryCode, this.options.countryNames)));
 
 			// Content
-			const tooltipContent = createElement('div', 'svg-map-tooltip-content', tooltipContentWrapper);
+			const tooltipContent = $('<div class="svg-map-tooltip-content">').appendTo(tooltipContentWrapper);
 			if (this.options.data && this.options.data.values[countryCode]) {
-				$(tooltipContent).append(this.options.getTooltipContent(this.options.data.data, this.options.data.values, countryCode));
+				tooltipContent.append(this.options.getTooltipContent(this.options.data.data, this.options.data.values, countryCode));
 			} else {
-				createElement('div', 'svg-map-tooltip-no-data', tooltipContent).innerHTML = this.options.noDataText;
+				tooltipContent.append($('<div class="svg-map-tooltip-no-data">').html(this.options.noDataText));
 			}
 			return tooltipContentWrapper;
 		};
 
 		// Zoom map
 		const zoomMap = (buttonControl, direction) => {
-			if (buttonControl.classList.contains('svg-map-disabled')) return false;
+			if (buttonControl.hasClass('svg-map-disabled')) return false;
 			this.panZoom[direction == 'in' ? 'zoomIn' : 'zoomOut']();
 		};
 
@@ -57,21 +56,21 @@ export default class SVGMap {
 		const { tooltip, tooltipContentContainer, tooltipPointer } = createTooltip();
 
 		// Create map wrappers
-		this.wrapper = createElement('div', 'svg-map-wrapper', container);
+		this.wrapper = $('<div class="svg-map-wrapper">').appendTo(container);
 		const mapImage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		mapImage.setAttribute('viewBox', '0 0 2000 1001');
 		mapImage.classList.add('svg-map-image');
-		this.wrapper.appendChild(mapImage);
+		this.wrapper.append(mapImage);
 
 		// Add controls
-		const mapControlsWrapper = createElement('div', 'svg-map-controls-wrapper', this.wrapper);
-		const zoomContainer = createElement('div', 'svg-map-controls-zoom', mapControlsWrapper);
-		const zoomControlIn = createElement('button', `svg-map-control-button svg-map-zoom-button svg-map-zoom-in-button`, zoomContainer);
-		const zoomControlOut = createElement('button', `svg-map-control-button svg-map-zoom-button svg-map-zoom-out-button`, zoomContainer);
+		const mapControlsWrapper = $('<div class="svg-map-controls-wrapper">').appendTo(this.wrapper);
+		const zoomContainer = $('<div class="svg-map-controls-zoom">').appendTo(mapControlsWrapper);
+		const zoomControlIn = $('<button class="svg-map-control-button svg-map-zoom-button svg-map-zoom-in-button">').appendTo(zoomContainer);
+		const zoomControlOut = $('<button class="svg-map-control-button svg-map-zoom-button svg-map-zoom-out-button">').appendTo(zoomContainer);
 		[[zoomControlIn, 'in'], [zoomControlOut, 'out']].forEach(([buttonControl, direction]) => {
 			buttonControl.type = 'button';
-			buttonControl.addEventListener('click', () => zoomMap(buttonControl, direction));
-			zoomControlIn.setAttribute('aria-label', `Zoom ${direction}`);
+			buttonControl.on('click', () => zoomMap(buttonControl, direction));
+			buttonControl.attr('aria-label', `Zoom ${direction}`);
 		});
 
 		// Fix countries
@@ -122,7 +121,7 @@ export default class SVGMap {
 		});
 
 		// Init pan zoom
-		this.panZoom = svgPanZoom(mapImage, {
+		this.panZoom = SVGPanZoom(mapImage, {
 			zoomEnabled: true,
 			fit: true,
 			center: true,
@@ -178,7 +177,7 @@ export default class SVGMap {
 
 		// Loop through countries and set colors
 		Object.keys(countries).forEach(countryCode => {
-			const element = this.wrapper.querySelector(`[data-id="${countryCode}"]`);
+			const element = this.wrapper.find(`[data-id="${countryCode}"]`)[0];
 			if (!element) return;
 			if (!data.values[countryCode]) {
 				element.setAttribute('fill', this.options.colorNoData);
@@ -190,11 +189,11 @@ export default class SVGMap {
 			element.setAttribute('fill', color);
 		});
 		if (this.options.fitToData) {
-			const { offsetWidth: mapWidth, offsetHeight: mapHeight } = this.wrapper;
+			const { offsetWidth: mapWidth, offsetHeight: mapHeight } = this.wrapper[0];
 			const scaleFactor = mapWidth / (mapWidth > mapHeight ? 2000 : 1001);
 			const mapCenterPoint = [mapWidth / 2, mapHeight / 2];
 			const points = Object.keys(data.values).map(countryCode => {
-				return this.wrapper.querySelector(`[data-id="${countryCode}"]`);
+				return this.wrapper.find(`[data-id="${countryCode}"]`)[0];
 			}).filter(path => path != null).reduce((accumulator, path) => {
 				const pathDefinition = (path.attributes.d.value.match(/[A-Za-z][\d.,-]+/g) || []).map(string => {
 					const command = string.charAt(0);

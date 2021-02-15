@@ -1,15 +1,15 @@
-import { createElement } from './utils';
+import $ from 'cash-dom';
 
 // Create the tooltip
 export const createTooltip = () => {
-	const tooltip = createElement('div', 'svg-map-tooltip', document.body);
-	const tooltipContentContainer = createElement('div', 'svg-map-tooltip-content-wrapper', tooltip);
-	const tooltipPointer = createElement('div', 'svg-map-tooltip-pointer', tooltip);
+	const tooltip = $('<div class="svg-map-tooltip">').appendTo(document.body);
+	const tooltipContentContainer = $('<div class="svg-map-tooltip-content-wrapper">').appendTo(tooltip);
+	const tooltipPointer = $('<div class="svg-map-tooltip-pointer">').appendTo(tooltip);
 	return { tooltip, tooltipContentContainer, tooltipPointer };
 };
 
 // Hide the tooltip
-export const hideTooltip = tooltip => tooltip.classList.remove('svg-map-active');
+export const hideTooltip = tooltip => tooltip.removeClass('svg-map-active');
 
 // Move the tooltip
 export const moveTooltip = (event, { tooltip, tooltipPointer }) => {
@@ -21,44 +21,43 @@ export const moveTooltip = (event, { tooltip, tooltipPointer }) => {
 		const offsetToPointerFlipped = 32;
 
 		const wWidth = window.innerWidth;
-		const tWidth = tooltip.offsetWidth;
-		const tHeight = tooltip.offsetHeight;
+		const tWidth = tooltip[0].offsetWidth;
+		const tHeight = tooltip[0].offsetHeight;
 
 		// Adjust pointer when reaching window sides
 		const left = x - tWidth / 2;
 		if (left <= offsetToWindow) {
 			x = offsetToWindow + (tWidth / 2);
-			tooltipPointer.style.marginLeft = (left - offsetToWindow) + 'px';
+			tooltipPointer.css('margin-left', left - offsetToWindow);
 		} else if (left + tWidth >= wWidth - offsetToWindow) {
 			x = wWidth - offsetToWindow - (tWidth / 2);
-			tooltipPointer.style.marginLeft = ((wWidth - offsetToWindow - event.pageX - (tWidth / 2)) * -1) + 'px';
+			tooltipPointer.css('margin-left', (wWidth - offsetToWindow - event.pageX - (tWidth / 2)) * -1);
 		} else {
-			tooltipPointer.style.marginLeft = '0px';
+			tooltipPointer.css('margin-left', 0);
 		}
 
 		// Flip tooltip when reaching top window edge
 		const top = y - offsetToPointer - tHeight;
 		if (top <= offsetToWindow) {
-			tooltip.classList.add('svg-map-tooltip-flipped');
+			tooltip.addClass('svg-map-tooltip-flipped');
 			y += offsetToPointerFlipped;
 		} else {
-			tooltip.classList.remove('svg-map-tooltip-flipped');
+			tooltip.removeClass('svg-map-tooltip-flipped');
 			y -= offsetToPointer;
 		}
 
-		tooltip.style.left = x + 'px';
-		tooltip.style.top = y + 'px';
+		tooltip.css('left', x);
+		tooltip.css('top', y);
 	}
 };
 
 // Set the tooltips content
 export const setTooltipContent = (tooltipContent, content) => {
-	tooltipContent.innerHTML = '';
-	tooltipContent.append(content);
-}
+	tooltipContent.empty().append(content);
+};
 
 // Show the tooltip
 export const showTooltip = (event, { tooltip, tooltipPointer }) => {
-	tooltip.classList.add('svg-map-active');
+	tooltip.addClass('svg-map-active');
 	moveTooltip(event, { tooltip, tooltipPointer });
 };

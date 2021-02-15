@@ -1,17 +1,5 @@
 import countries from './countries';
 
-// Helper to create an element with a class name
-export const createElement = (type, className, appendTo, innerhtml) => {
-	const element = document.createElement(type);
-	if (className) {
-		className = className.split(' ');
-		className.forEach(item => element.classList.add(item));
-	}
-	innerhtml && (element.innerHTML = innerhtml);
-	appendTo && appendTo.appendChild(element);
-	return element;
-};
-
 // Print numbers with commas
 export const numberWithCommas = (number, separator = ',') => {
 	return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, separator);

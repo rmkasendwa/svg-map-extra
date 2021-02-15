@@ -98,564 +98,6 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Utils = __webpack_require__(1),
-  _browser = "unknown";
-
-// http://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
-if (/*@cc_on!@*/  false || !!document.documentMode) {
-  // internet explorer
-  _browser = "ie";
-}
-
-module.exports = {
-  svgNS: "http://www.w3.org/2000/svg",
-  xmlNS: "http://www.w3.org/XML/1998/namespace",
-  xmlnsNS: "http://www.w3.org/2000/xmlns/",
-  xlinkNS: "http://www.w3.org/1999/xlink",
-  evNS: "http://www.w3.org/2001/xml-events",
-
-  /**
-   * Get svg dimensions: width and height
-   *
-   * @param  {SVGSVGElement} svg
-   * @return {Object}     {width: 0, height: 0}
-   */
-  getBoundingClientRectNormalized: function(svg) {
-    if (svg.clientWidth && svg.clientHeight) {
-      return { width: svg.clientWidth, height: svg.clientHeight };
-    } else if (!!svg.getBoundingClientRect()) {
-      return svg.getBoundingClientRect();
-    } else {
-      throw new Error("Cannot get BoundingClientRect for SVG.");
-    }
-  },
-
-  /**
-   * Gets g element with class of "viewport" or creates it if it doesn't exist
-   *
-   * @param  {SVGSVGElement} svg
-   * @return {SVGElement}     g (group) element
-   */
-  getOrCreateViewport: function(svg, selector) {
-    var viewport = null;
-
-    if (Utils.isElement(selector)) {
-      viewport = selector;
-    } else {
-      viewport = svg.querySelector(selector);
-    }
-
-    // Check if there is just one main group in SVG
-    if (!viewport) {
-      var childNodes = Array.prototype.slice
-        .call(svg.childNodes || svg.children)
-        .filter(function(el) {
-          return el.nodeName !== "defs" && el.nodeName !== "#text";
-        });
-
-      // Node name should be SVGGElement and should have no transform attribute
-      // Groups with transform are not used as viewport because it involves parsing of all transform possibilities
-      if (
-        childNodes.length === 1 &&
-        childNodes[0].nodeName === "g" &&
-        childNodes[0].getAttribute("transform") === null
-      ) {
-        viewport = childNodes[0];
-      }
-    }
-
-    // If no favorable group element exists then create one
-    if (!viewport) {
-      var viewportId =
-        "viewport-" + new Date().toISOString().replace(/\D/g, "");
-      viewport = document.createElementNS(this.svgNS, "g");
-      viewport.setAttribute("id", viewportId);
-
-      // Internet Explorer (all versions?) can't use childNodes, but other browsers prefer (require?) using childNodes
-      var svgChildren = svg.childNodes || svg.children;
-      if (!!svgChildren && svgChildren.length > 0) {
-        for (var i = svgChildren.length; i > 0; i--) {
-          // Move everything into viewport except defs
-          if (svgChildren[svgChildren.length - i].nodeName !== "defs") {
-            viewport.appendChild(svgChildren[svgChildren.length - i]);
-          }
-        }
-      }
-      svg.appendChild(viewport);
-    }
-
-    // Parse class names
-    var classNames = [];
-    if (viewport.getAttribute("class")) {
-      classNames = viewport.getAttribute("class").split(" ");
-    }
-
-    // Set class (if not set already)
-    if (!~classNames.indexOf("svg-pan-zoom_viewport")) {
-      classNames.push("svg-pan-zoom_viewport");
-      viewport.setAttribute("class", classNames.join(" "));
-    }
-
-    return viewport;
-  },
-
-  /**
-   * Set SVG attributes
-   *
-   * @param  {SVGSVGElement} svg
-   */
-  setupSvgAttributes: function(svg) {
-    // Setting default attributes
-    svg.setAttribute("xmlns", this.svgNS);
-    svg.setAttributeNS(this.xmlnsNS, "xmlns:xlink", this.xlinkNS);
-    svg.setAttributeNS(this.xmlnsNS, "xmlns:ev", this.evNS);
-
-    // Needed for Internet Explorer, otherwise the viewport overflows
-    if (svg.parentNode !== null) {
-      var style = svg.getAttribute("style") || "";
-      if (style.toLowerCase().indexOf("overflow") === -1) {
-        svg.setAttribute("style", "overflow: hidden; " + style);
-      }
-    }
-  },
-
-  /**
-   * How long Internet Explorer takes to finish updating its display (ms).
-   */
-  internetExplorerRedisplayInterval: 300,
-
-  /**
-   * Forces the browser to redisplay all SVG elements that rely on an
-   * element defined in a 'defs' section. It works globally, for every
-   * available defs element on the page.
-   * The throttling is intentionally global.
-   *
-   * This is only needed for IE. It is as a hack to make markers (and 'use' elements?)
-   * visible after pan/zoom when there are multiple SVGs on the page.
-   * See bug report: https://connect.microsoft.com/IE/feedback/details/781964/
-   * also see svg-pan-zoom issue: https://github.com/ariutta/svg-pan-zoom/issues/62
-   */
-  refreshDefsGlobal: Utils.throttle(
-    function() {
-      var allDefs = document.querySelectorAll("defs");
-      var allDefsCount = allDefs.length;
-      for (var i = 0; i < allDefsCount; i++) {
-        var thisDefs = allDefs[i];
-        thisDefs.parentNode.insertBefore(thisDefs, thisDefs);
-      }
-    },
-    this ? this.internetExplorerRedisplayInterval : null
-  ),
-
-  /**
-   * Sets the current transform matrix of an element
-   *
-   * @param {SVGElement} element
-   * @param {SVGMatrix} matrix  CTM
-   * @param {SVGElement} defs
-   */
-  setCTM: function(element, matrix, defs) {
-    var that = this,
-      s =
-        "matrix(" +
-        matrix.a +
-        "," +
-        matrix.b +
-        "," +
-        matrix.c +
-        "," +
-        matrix.d +
-        "," +
-        matrix.e +
-        "," +
-        matrix.f +
-        ")";
-
-    element.setAttributeNS(null, "transform", s);
-    if ("transform" in element.style) {
-      element.style.transform = s;
-    } else if ("-ms-transform" in element.style) {
-      element.style["-ms-transform"] = s;
-    } else if ("-webkit-transform" in element.style) {
-      element.style["-webkit-transform"] = s;
-    }
-
-    // IE has a bug that makes markers disappear on zoom (when the matrix "a" and/or "d" elements change)
-    // see http://stackoverflow.com/questions/17654578/svg-marker-does-not-work-in-ie9-10
-    // and http://srndolha.wordpress.com/2013/11/25/svg-line-markers-may-disappear-in-internet-explorer-11/
-    if (_browser === "ie" && !!defs) {
-      // this refresh is intended for redisplaying the SVG during zooming
-      defs.parentNode.insertBefore(defs, defs);
-      // this refresh is intended for redisplaying the other SVGs on a page when panning a given SVG
-      // it is also needed for the given SVG itself, on zoomEnd, if the SVG contains any markers that
-      // are located under any other element(s).
-      window.setTimeout(function() {
-        that.refreshDefsGlobal();
-      }, that.internetExplorerRedisplayInterval);
-    }
-  },
-
-  /**
-   * Instantiate an SVGPoint object with given event coordinates
-   *
-   * @param {Event} evt
-   * @param  {SVGSVGElement} svg
-   * @return {SVGPoint}     point
-   */
-  getEventPoint: function(evt, svg) {
-    var point = svg.createSVGPoint();
-
-    Utils.mouseAndTouchNormalize(evt, svg);
-
-    point.x = evt.clientX;
-    point.y = evt.clientY;
-
-    return point;
-  },
-
-  /**
-   * Get SVG center point
-   *
-   * @param  {SVGSVGElement} svg
-   * @return {SVGPoint}
-   */
-  getSvgCenterPoint: function(svg, width, height) {
-    return this.createSVGPoint(svg, width / 2, height / 2);
-  },
-
-  /**
-   * Create a SVGPoint with given x and y
-   *
-   * @param  {SVGSVGElement} svg
-   * @param  {Number} x
-   * @param  {Number} y
-   * @return {SVGPoint}
-   */
-  createSVGPoint: function(svg, x, y) {
-    var point = svg.createSVGPoint();
-    point.x = x;
-    point.y = y;
-
-    return point;
-  }
-};
-
-
-/***/ }),
-/* 1 */
-/***/ (function(module, exports) {
-
-module.exports = {
-  /**
-   * Extends an object
-   *
-   * @param  {Object} target object to extend
-   * @param  {Object} source object to take properties from
-   * @return {Object}        extended object
-   */
-  extend: function(target, source) {
-    target = target || {};
-    for (var prop in source) {
-      // Go recursively
-      if (this.isObject(source[prop])) {
-        target[prop] = this.extend(target[prop], source[prop]);
-      } else {
-        target[prop] = source[prop];
-      }
-    }
-    return target;
-  },
-
-  /**
-   * Checks if an object is a DOM element
-   *
-   * @param  {Object}  o HTML element or String
-   * @return {Boolean}   returns true if object is a DOM element
-   */
-  isElement: function(o) {
-    return (
-      o instanceof HTMLElement ||
-      o instanceof SVGElement ||
-      o instanceof SVGSVGElement || //DOM2
-      (o &&
-        typeof o === "object" &&
-        o !== null &&
-        o.nodeType === 1 &&
-        typeof o.nodeName === "string")
-    );
-  },
-
-  /**
-   * Checks if an object is an Object
-   *
-   * @param  {Object}  o Object
-   * @return {Boolean}   returns true if object is an Object
-   */
-  isObject: function(o) {
-    return Object.prototype.toString.call(o) === "[object Object]";
-  },
-
-  /**
-   * Checks if variable is Number
-   *
-   * @param  {Integer|Float}  n
-   * @return {Boolean}   returns true if variable is Number
-   */
-  isNumber: function(n) {
-    return !isNaN(parseFloat(n)) && isFinite(n);
-  },
-
-  /**
-   * Search for an SVG element
-   *
-   * @param  {Object|String} elementOrSelector DOM Element or selector String
-   * @return {Object|Null}                   SVG or null
-   */
-  getSvg: function(elementOrSelector) {
-    var element, svg;
-
-    if (!this.isElement(elementOrSelector)) {
-      // If selector provided
-      if (
-        typeof elementOrSelector === "string" ||
-        elementOrSelector instanceof String
-      ) {
-        // Try to find the element
-        element = document.querySelector(elementOrSelector);
-
-        if (!element) {
-          throw new Error(
-            "Provided selector did not find any elements. Selector: " +
-              elementOrSelector
-          );
-          return null;
-        }
-      } else {
-        throw new Error("Provided selector is not an HTML object nor String");
-        return null;
-      }
-    } else {
-      element = elementOrSelector;
-    }
-
-    if (element.tagName.toLowerCase() === "svg") {
-      svg = element;
-    } else {
-      if (element.tagName.toLowerCase() === "object") {
-        svg = element.contentDocument.documentElement;
-      } else {
-        if (element.tagName.toLowerCase() === "embed") {
-          svg = element.getSVGDocument().documentElement;
-        } else {
-          if (element.tagName.toLowerCase() === "img") {
-            throw new Error(
-              'Cannot script an SVG in an "img" element. Please use an "object" element or an in-line SVG.'
-            );
-          } else {
-            throw new Error("Cannot get SVG.");
-          }
-          return null;
-        }
-      }
-    }
-
-    return svg;
-  },
-
-  /**
-   * Attach a given context to a function
-   * @param  {Function} fn      Function
-   * @param  {Object}   context Context
-   * @return {Function}           Function with certain context
-   */
-  proxy: function(fn, context) {
-    return function() {
-      return fn.apply(context, arguments);
-    };
-  },
-
-  /**
-   * Returns object type
-   * Uses toString that returns [object SVGPoint]
-   * And than parses object type from string
-   *
-   * @param  {Object} o Any object
-   * @return {String}   Object type
-   */
-  getType: function(o) {
-    return Object.prototype.toString
-      .apply(o)
-      .replace(/^\[object\s/, "")
-      .replace(/\]$/, "");
-  },
-
-  /**
-   * If it is a touch event than add clientX and clientY to event object
-   *
-   * @param  {Event} evt
-   * @param  {SVGSVGElement} svg
-   */
-  mouseAndTouchNormalize: function(evt, svg) {
-    // If no clientX then fallback
-    if (evt.clientX === void 0 || evt.clientX === null) {
-      // Fallback
-      evt.clientX = 0;
-      evt.clientY = 0;
-
-      // If it is a touch event
-      if (evt.touches !== void 0 && evt.touches.length) {
-        if (evt.touches[0].clientX !== void 0) {
-          evt.clientX = evt.touches[0].clientX;
-          evt.clientY = evt.touches[0].clientY;
-        } else if (evt.touches[0].pageX !== void 0) {
-          var rect = svg.getBoundingClientRect();
-
-          evt.clientX = evt.touches[0].pageX - rect.left;
-          evt.clientY = evt.touches[0].pageY - rect.top;
-        }
-        // If it is a custom event
-      } else if (evt.originalEvent !== void 0) {
-        if (evt.originalEvent.clientX !== void 0) {
-          evt.clientX = evt.originalEvent.clientX;
-          evt.clientY = evt.originalEvent.clientY;
-        }
-      }
-    }
-  },
-
-  /**
-   * Check if an event is a double click/tap
-   * TODO: For touch gestures use a library (hammer.js) that takes in account other events
-   * (touchmove and touchend). It should take in account tap duration and traveled distance
-   *
-   * @param  {Event}  evt
-   * @param  {Event}  prevEvt Previous Event
-   * @return {Boolean}
-   */
-  isDblClick: function(evt, prevEvt) {
-    // Double click detected by browser
-    if (evt.detail === 2) {
-      return true;
-    }
-    // Try to compare events
-    else if (prevEvt !== void 0 && prevEvt !== null) {
-      var timeStampDiff = evt.timeStamp - prevEvt.timeStamp, // should be lower than 250 ms
-        touchesDistance = Math.sqrt(
-          Math.pow(evt.clientX - prevEvt.clientX, 2) +
-            Math.pow(evt.clientY - prevEvt.clientY, 2)
-        );
-
-      return timeStampDiff < 250 && touchesDistance < 10;
-    }
-
-    // Nothing found
-    return false;
-  },
-
-  /**
-   * Returns current timestamp as an integer
-   *
-   * @return {Number}
-   */
-  now:
-    Date.now ||
-    function() {
-      return new Date().getTime();
-    },
-
-  // From underscore.
-  // Returns a function, that, when invoked, will only be triggered at most once
-  // during a given window of time. Normally, the throttled function will run
-  // as much as it can, without ever going more than once per `wait` duration;
-  // but if you'd like to disable the execution on the leading edge, pass
-  // `{leading: false}`. To disable execution on the trailing edge, ditto.
-  throttle: function(func, wait, options) {
-    var that = this;
-    var context, args, result;
-    var timeout = null;
-    var previous = 0;
-    if (!options) {
-      options = {};
-    }
-    var later = function() {
-      previous = options.leading === false ? 0 : that.now();
-      timeout = null;
-      result = func.apply(context, args);
-      if (!timeout) {
-        context = args = null;
-      }
-    };
-    return function() {
-      var now = that.now();
-      if (!previous && options.leading === false) {
-        previous = now;
-      }
-      var remaining = wait - (now - previous);
-      context = this; // eslint-disable-line consistent-this
-      args = arguments;
-      if (remaining <= 0 || remaining > wait) {
-        clearTimeout(timeout);
-        timeout = null;
-        previous = now;
-        result = func.apply(context, args);
-        if (!timeout) {
-          context = args = null;
-        }
-      } else if (!timeout && options.trailing !== false) {
-        timeout = setTimeout(later, remaining);
-      }
-      return result;
-    };
-  },
-
-  /**
-   * Create a requestAnimationFrame simulation
-   *
-   * @param  {Number|String} refreshRate
-   * @return {Function}
-   */
-  createRequestAnimationFrame: function(refreshRate) {
-    var timeout = null;
-
-    // Convert refreshRate to timeout
-    if (refreshRate !== "auto" && refreshRate < 60 && refreshRate > 1) {
-      timeout = Math.floor(1000 / refreshRate);
-    }
-
-    if (timeout === null) {
-      return window.requestAnimationFrame || requestTimeout(33);
-    } else {
-      return requestTimeout(timeout);
-    }
-  }
-};
-
-/**
- * Create a callback that will execute after a given timeout
- *
- * @param  {Function} timeout
- * @return {Function}
- */
-function requestTimeout(timeout) {
-  return function(callback) {
-    window.setTimeout(callback, timeout);
-  };
-}
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var SvgPanZoom = __webpack_require__(6);
-
-module.exports = SvgPanZoom;
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
 /* MIT https://github.com/fabiospampinato/cash */
 (function(){
 "use strict";
@@ -2029,6 +1471,564 @@ if (true) {
 })();
 
 /***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Utils = __webpack_require__(2),
+  _browser = "unknown";
+
+// http://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
+if (/*@cc_on!@*/  false || !!document.documentMode) {
+  // internet explorer
+  _browser = "ie";
+}
+
+module.exports = {
+  svgNS: "http://www.w3.org/2000/svg",
+  xmlNS: "http://www.w3.org/XML/1998/namespace",
+  xmlnsNS: "http://www.w3.org/2000/xmlns/",
+  xlinkNS: "http://www.w3.org/1999/xlink",
+  evNS: "http://www.w3.org/2001/xml-events",
+
+  /**
+   * Get svg dimensions: width and height
+   *
+   * @param  {SVGSVGElement} svg
+   * @return {Object}     {width: 0, height: 0}
+   */
+  getBoundingClientRectNormalized: function(svg) {
+    if (svg.clientWidth && svg.clientHeight) {
+      return { width: svg.clientWidth, height: svg.clientHeight };
+    } else if (!!svg.getBoundingClientRect()) {
+      return svg.getBoundingClientRect();
+    } else {
+      throw new Error("Cannot get BoundingClientRect for SVG.");
+    }
+  },
+
+  /**
+   * Gets g element with class of "viewport" or creates it if it doesn't exist
+   *
+   * @param  {SVGSVGElement} svg
+   * @return {SVGElement}     g (group) element
+   */
+  getOrCreateViewport: function(svg, selector) {
+    var viewport = null;
+
+    if (Utils.isElement(selector)) {
+      viewport = selector;
+    } else {
+      viewport = svg.querySelector(selector);
+    }
+
+    // Check if there is just one main group in SVG
+    if (!viewport) {
+      var childNodes = Array.prototype.slice
+        .call(svg.childNodes || svg.children)
+        .filter(function(el) {
+          return el.nodeName !== "defs" && el.nodeName !== "#text";
+        });
+
+      // Node name should be SVGGElement and should have no transform attribute
+      // Groups with transform are not used as viewport because it involves parsing of all transform possibilities
+      if (
+        childNodes.length === 1 &&
+        childNodes[0].nodeName === "g" &&
+        childNodes[0].getAttribute("transform") === null
+      ) {
+        viewport = childNodes[0];
+      }
+    }
+
+    // If no favorable group element exists then create one
+    if (!viewport) {
+      var viewportId =
+        "viewport-" + new Date().toISOString().replace(/\D/g, "");
+      viewport = document.createElementNS(this.svgNS, "g");
+      viewport.setAttribute("id", viewportId);
+
+      // Internet Explorer (all versions?) can't use childNodes, but other browsers prefer (require?) using childNodes
+      var svgChildren = svg.childNodes || svg.children;
+      if (!!svgChildren && svgChildren.length > 0) {
+        for (var i = svgChildren.length; i > 0; i--) {
+          // Move everything into viewport except defs
+          if (svgChildren[svgChildren.length - i].nodeName !== "defs") {
+            viewport.appendChild(svgChildren[svgChildren.length - i]);
+          }
+        }
+      }
+      svg.appendChild(viewport);
+    }
+
+    // Parse class names
+    var classNames = [];
+    if (viewport.getAttribute("class")) {
+      classNames = viewport.getAttribute("class").split(" ");
+    }
+
+    // Set class (if not set already)
+    if (!~classNames.indexOf("svg-pan-zoom_viewport")) {
+      classNames.push("svg-pan-zoom_viewport");
+      viewport.setAttribute("class", classNames.join(" "));
+    }
+
+    return viewport;
+  },
+
+  /**
+   * Set SVG attributes
+   *
+   * @param  {SVGSVGElement} svg
+   */
+  setupSvgAttributes: function(svg) {
+    // Setting default attributes
+    svg.setAttribute("xmlns", this.svgNS);
+    svg.setAttributeNS(this.xmlnsNS, "xmlns:xlink", this.xlinkNS);
+    svg.setAttributeNS(this.xmlnsNS, "xmlns:ev", this.evNS);
+
+    // Needed for Internet Explorer, otherwise the viewport overflows
+    if (svg.parentNode !== null) {
+      var style = svg.getAttribute("style") || "";
+      if (style.toLowerCase().indexOf("overflow") === -1) {
+        svg.setAttribute("style", "overflow: hidden; " + style);
+      }
+    }
+  },
+
+  /**
+   * How long Internet Explorer takes to finish updating its display (ms).
+   */
+  internetExplorerRedisplayInterval: 300,
+
+  /**
+   * Forces the browser to redisplay all SVG elements that rely on an
+   * element defined in a 'defs' section. It works globally, for every
+   * available defs element on the page.
+   * The throttling is intentionally global.
+   *
+   * This is only needed for IE. It is as a hack to make markers (and 'use' elements?)
+   * visible after pan/zoom when there are multiple SVGs on the page.
+   * See bug report: https://connect.microsoft.com/IE/feedback/details/781964/
+   * also see svg-pan-zoom issue: https://github.com/ariutta/svg-pan-zoom/issues/62
+   */
+  refreshDefsGlobal: Utils.throttle(
+    function() {
+      var allDefs = document.querySelectorAll("defs");
+      var allDefsCount = allDefs.length;
+      for (var i = 0; i < allDefsCount; i++) {
+        var thisDefs = allDefs[i];
+        thisDefs.parentNode.insertBefore(thisDefs, thisDefs);
+      }
+    },
+    this ? this.internetExplorerRedisplayInterval : null
+  ),
+
+  /**
+   * Sets the current transform matrix of an element
+   *
+   * @param {SVGElement} element
+   * @param {SVGMatrix} matrix  CTM
+   * @param {SVGElement} defs
+   */
+  setCTM: function(element, matrix, defs) {
+    var that = this,
+      s =
+        "matrix(" +
+        matrix.a +
+        "," +
+        matrix.b +
+        "," +
+        matrix.c +
+        "," +
+        matrix.d +
+        "," +
+        matrix.e +
+        "," +
+        matrix.f +
+        ")";
+
+    element.setAttributeNS(null, "transform", s);
+    if ("transform" in element.style) {
+      element.style.transform = s;
+    } else if ("-ms-transform" in element.style) {
+      element.style["-ms-transform"] = s;
+    } else if ("-webkit-transform" in element.style) {
+      element.style["-webkit-transform"] = s;
+    }
+
+    // IE has a bug that makes markers disappear on zoom (when the matrix "a" and/or "d" elements change)
+    // see http://stackoverflow.com/questions/17654578/svg-marker-does-not-work-in-ie9-10
+    // and http://srndolha.wordpress.com/2013/11/25/svg-line-markers-may-disappear-in-internet-explorer-11/
+    if (_browser === "ie" && !!defs) {
+      // this refresh is intended for redisplaying the SVG during zooming
+      defs.parentNode.insertBefore(defs, defs);
+      // this refresh is intended for redisplaying the other SVGs on a page when panning a given SVG
+      // it is also needed for the given SVG itself, on zoomEnd, if the SVG contains any markers that
+      // are located under any other element(s).
+      window.setTimeout(function() {
+        that.refreshDefsGlobal();
+      }, that.internetExplorerRedisplayInterval);
+    }
+  },
+
+  /**
+   * Instantiate an SVGPoint object with given event coordinates
+   *
+   * @param {Event} evt
+   * @param  {SVGSVGElement} svg
+   * @return {SVGPoint}     point
+   */
+  getEventPoint: function(evt, svg) {
+    var point = svg.createSVGPoint();
+
+    Utils.mouseAndTouchNormalize(evt, svg);
+
+    point.x = evt.clientX;
+    point.y = evt.clientY;
+
+    return point;
+  },
+
+  /**
+   * Get SVG center point
+   *
+   * @param  {SVGSVGElement} svg
+   * @return {SVGPoint}
+   */
+  getSvgCenterPoint: function(svg, width, height) {
+    return this.createSVGPoint(svg, width / 2, height / 2);
+  },
+
+  /**
+   * Create a SVGPoint with given x and y
+   *
+   * @param  {SVGSVGElement} svg
+   * @param  {Number} x
+   * @param  {Number} y
+   * @return {SVGPoint}
+   */
+  createSVGPoint: function(svg, x, y) {
+    var point = svg.createSVGPoint();
+    point.x = x;
+    point.y = y;
+
+    return point;
+  }
+};
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports) {
+
+module.exports = {
+  /**
+   * Extends an object
+   *
+   * @param  {Object} target object to extend
+   * @param  {Object} source object to take properties from
+   * @return {Object}        extended object
+   */
+  extend: function(target, source) {
+    target = target || {};
+    for (var prop in source) {
+      // Go recursively
+      if (this.isObject(source[prop])) {
+        target[prop] = this.extend(target[prop], source[prop]);
+      } else {
+        target[prop] = source[prop];
+      }
+    }
+    return target;
+  },
+
+  /**
+   * Checks if an object is a DOM element
+   *
+   * @param  {Object}  o HTML element or String
+   * @return {Boolean}   returns true if object is a DOM element
+   */
+  isElement: function(o) {
+    return (
+      o instanceof HTMLElement ||
+      o instanceof SVGElement ||
+      o instanceof SVGSVGElement || //DOM2
+      (o &&
+        typeof o === "object" &&
+        o !== null &&
+        o.nodeType === 1 &&
+        typeof o.nodeName === "string")
+    );
+  },
+
+  /**
+   * Checks if an object is an Object
+   *
+   * @param  {Object}  o Object
+   * @return {Boolean}   returns true if object is an Object
+   */
+  isObject: function(o) {
+    return Object.prototype.toString.call(o) === "[object Object]";
+  },
+
+  /**
+   * Checks if variable is Number
+   *
+   * @param  {Integer|Float}  n
+   * @return {Boolean}   returns true if variable is Number
+   */
+  isNumber: function(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+  },
+
+  /**
+   * Search for an SVG element
+   *
+   * @param  {Object|String} elementOrSelector DOM Element or selector String
+   * @return {Object|Null}                   SVG or null
+   */
+  getSvg: function(elementOrSelector) {
+    var element, svg;
+
+    if (!this.isElement(elementOrSelector)) {
+      // If selector provided
+      if (
+        typeof elementOrSelector === "string" ||
+        elementOrSelector instanceof String
+      ) {
+        // Try to find the element
+        element = document.querySelector(elementOrSelector);
+
+        if (!element) {
+          throw new Error(
+            "Provided selector did not find any elements. Selector: " +
+              elementOrSelector
+          );
+          return null;
+        }
+      } else {
+        throw new Error("Provided selector is not an HTML object nor String");
+        return null;
+      }
+    } else {
+      element = elementOrSelector;
+    }
+
+    if (element.tagName.toLowerCase() === "svg") {
+      svg = element;
+    } else {
+      if (element.tagName.toLowerCase() === "object") {
+        svg = element.contentDocument.documentElement;
+      } else {
+        if (element.tagName.toLowerCase() === "embed") {
+          svg = element.getSVGDocument().documentElement;
+        } else {
+          if (element.tagName.toLowerCase() === "img") {
+            throw new Error(
+              'Cannot script an SVG in an "img" element. Please use an "object" element or an in-line SVG.'
+            );
+          } else {
+            throw new Error("Cannot get SVG.");
+          }
+          return null;
+        }
+      }
+    }
+
+    return svg;
+  },
+
+  /**
+   * Attach a given context to a function
+   * @param  {Function} fn      Function
+   * @param  {Object}   context Context
+   * @return {Function}           Function with certain context
+   */
+  proxy: function(fn, context) {
+    return function() {
+      return fn.apply(context, arguments);
+    };
+  },
+
+  /**
+   * Returns object type
+   * Uses toString that returns [object SVGPoint]
+   * And than parses object type from string
+   *
+   * @param  {Object} o Any object
+   * @return {String}   Object type
+   */
+  getType: function(o) {
+    return Object.prototype.toString
+      .apply(o)
+      .replace(/^\[object\s/, "")
+      .replace(/\]$/, "");
+  },
+
+  /**
+   * If it is a touch event than add clientX and clientY to event object
+   *
+   * @param  {Event} evt
+   * @param  {SVGSVGElement} svg
+   */
+  mouseAndTouchNormalize: function(evt, svg) {
+    // If no clientX then fallback
+    if (evt.clientX === void 0 || evt.clientX === null) {
+      // Fallback
+      evt.clientX = 0;
+      evt.clientY = 0;
+
+      // If it is a touch event
+      if (evt.touches !== void 0 && evt.touches.length) {
+        if (evt.touches[0].clientX !== void 0) {
+          evt.clientX = evt.touches[0].clientX;
+          evt.clientY = evt.touches[0].clientY;
+        } else if (evt.touches[0].pageX !== void 0) {
+          var rect = svg.getBoundingClientRect();
+
+          evt.clientX = evt.touches[0].pageX - rect.left;
+          evt.clientY = evt.touches[0].pageY - rect.top;
+        }
+        // If it is a custom event
+      } else if (evt.originalEvent !== void 0) {
+        if (evt.originalEvent.clientX !== void 0) {
+          evt.clientX = evt.originalEvent.clientX;
+          evt.clientY = evt.originalEvent.clientY;
+        }
+      }
+    }
+  },
+
+  /**
+   * Check if an event is a double click/tap
+   * TODO: For touch gestures use a library (hammer.js) that takes in account other events
+   * (touchmove and touchend). It should take in account tap duration and traveled distance
+   *
+   * @param  {Event}  evt
+   * @param  {Event}  prevEvt Previous Event
+   * @return {Boolean}
+   */
+  isDblClick: function(evt, prevEvt) {
+    // Double click detected by browser
+    if (evt.detail === 2) {
+      return true;
+    }
+    // Try to compare events
+    else if (prevEvt !== void 0 && prevEvt !== null) {
+      var timeStampDiff = evt.timeStamp - prevEvt.timeStamp, // should be lower than 250 ms
+        touchesDistance = Math.sqrt(
+          Math.pow(evt.clientX - prevEvt.clientX, 2) +
+            Math.pow(evt.clientY - prevEvt.clientY, 2)
+        );
+
+      return timeStampDiff < 250 && touchesDistance < 10;
+    }
+
+    // Nothing found
+    return false;
+  },
+
+  /**
+   * Returns current timestamp as an integer
+   *
+   * @return {Number}
+   */
+  now:
+    Date.now ||
+    function() {
+      return new Date().getTime();
+    },
+
+  // From underscore.
+  // Returns a function, that, when invoked, will only be triggered at most once
+  // during a given window of time. Normally, the throttled function will run
+  // as much as it can, without ever going more than once per `wait` duration;
+  // but if you'd like to disable the execution on the leading edge, pass
+  // `{leading: false}`. To disable execution on the trailing edge, ditto.
+  throttle: function(func, wait, options) {
+    var that = this;
+    var context, args, result;
+    var timeout = null;
+    var previous = 0;
+    if (!options) {
+      options = {};
+    }
+    var later = function() {
+      previous = options.leading === false ? 0 : that.now();
+      timeout = null;
+      result = func.apply(context, args);
+      if (!timeout) {
+        context = args = null;
+      }
+    };
+    return function() {
+      var now = that.now();
+      if (!previous && options.leading === false) {
+        previous = now;
+      }
+      var remaining = wait - (now - previous);
+      context = this; // eslint-disable-line consistent-this
+      args = arguments;
+      if (remaining <= 0 || remaining > wait) {
+        clearTimeout(timeout);
+        timeout = null;
+        previous = now;
+        result = func.apply(context, args);
+        if (!timeout) {
+          context = args = null;
+        }
+      } else if (!timeout && options.trailing !== false) {
+        timeout = setTimeout(later, remaining);
+      }
+      return result;
+    };
+  },
+
+  /**
+   * Create a requestAnimationFrame simulation
+   *
+   * @param  {Number|String} refreshRate
+   * @return {Function}
+   */
+  createRequestAnimationFrame: function(refreshRate) {
+    var timeout = null;
+
+    // Convert refreshRate to timeout
+    if (refreshRate !== "auto" && refreshRate < 60 && refreshRate > 1) {
+      timeout = Math.floor(1000 / refreshRate);
+    }
+
+    if (timeout === null) {
+      return window.requestAnimationFrame || requestTimeout(33);
+    } else {
+      return requestTimeout(timeout);
+    }
+  }
+};
+
+/**
+ * Create a callback that will execute after a given timeout
+ *
+ * @param  {Function} timeout
+ * @return {Function}
+ */
+function requestTimeout(timeout) {
+  return function(callback) {
+    window.setTimeout(callback, timeout);
+  };
+}
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var SvgPanZoom = __webpack_require__(6);
+
+module.exports = SvgPanZoom;
+
+
+/***/ }),
 /* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2051,8 +2051,8 @@ __webpack_require__.r(__webpack_exports__);
 
 var Wheel = __webpack_require__(7),
   ControlIcons = __webpack_require__(8),
-  Utils = __webpack_require__(1),
-  SvgUtils = __webpack_require__(0),
+  Utils = __webpack_require__(2),
+  SvgUtils = __webpack_require__(1),
   ShadowViewport = __webpack_require__(9);
 
 var SvgPanZoom = function(svg, options) {
@@ -3166,7 +3166,7 @@ module.exports = (function(){
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var SvgUtils = __webpack_require__(0);
+var SvgUtils = __webpack_require__(1);
 
 module.exports = {
   enable: function(instance) {
@@ -3371,8 +3371,8 @@ module.exports = {
 /* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var SvgUtils = __webpack_require__(0),
-  Utils = __webpack_require__(1);
+var SvgUtils = __webpack_require__(1),
+  Utils = __webpack_require__(2);
 
 var ShadowViewport = function(viewport, options) {
   this.init(viewport, options);
@@ -3751,11 +3751,11 @@ __webpack_require__.r(__webpack_exports__);
 __webpack_require__.d(__webpack_exports__, "default", function() { return /* binding */ src_SVGMap; });
 
 // EXTERNAL MODULE: ./node_modules/svg-pan-zoom/src/browserify.js
-var browserify = __webpack_require__(2);
+var browserify = __webpack_require__(3);
 var browserify_default = /*#__PURE__*/__webpack_require__.n(browserify);
 
 // EXTERNAL MODULE: ./node_modules/cash-dom/dist/cash.js
-var cash = __webpack_require__(3);
+var cash = __webpack_require__(0);
 var cash_default = /*#__PURE__*/__webpack_require__.n(cash);
 
 // CONCATENATED MODULE: ./src/svg-map/countries.js
@@ -4007,22 +4007,7 @@ var cash_default = /*#__PURE__*/__webpack_require__.n(cash);
   ZW: 'Zimbabwe'
 });
 // CONCATENATED MODULE: ./src/svg-map/utils.js
- // Helper to create an element with a class name
-
-var createElement = function createElement(type, className, appendTo, innerhtml) {
-  var element = document.createElement(type);
-
-  if (className) {
-    className = className.split(' ');
-    className.forEach(function (item) {
-      return element.classList.add(item);
-    });
-  }
-
-  innerhtml && (element.innerHTML = innerhtml);
-  appendTo && appendTo.appendChild(element);
-  return element;
-}; // Print numbers with commas
+ // Print numbers with commas
 
 var numberWithCommas = function numberWithCommas(number) {
   var separator = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : ',';
@@ -4048,6 +4033,7 @@ var utils_getCountryName = function getCountryName(countryCode) {
   return countryNames[countryCode];
 };
 // CONCATENATED MODULE: ./src/svg-map/default-options.js
+
  // Default options, pass a custom options object to overwrite specific
 
 /* harmony default export */ var default_options = ({
@@ -4083,16 +4069,15 @@ var utils_getCountryName = function getCountryName(countryCode) {
   },
   // Get country tooltip content
   getTooltipContent: function getTooltipContent(schema, values, countryCode) {
-    var tooltipContentTable = '<table class="svg-map-tooltip-content-table">';
+    var tooltipContentTable = cash_default()('<table class="svg-map-tooltip-content-table">');
     Object.keys(schema).forEach(function (key) {
       var value = values[countryCode][key];
       var item = typeof schema[key] === "function" ? schema[key](value) : schema[key];
       item.floatingNumbers && (value = value.toFixed(1));
       item.thousandSeparator && (value = numberWithCommas(value, item.thousandSeparator));
       value = item.format ? item.format.replace('{0}', "<span>".concat(value, "</span>")) : "<span>".concat(value, "</span>");
-      tooltipContentTable += "\n\t\t\t\t<tr>\n\t\t\t\t\t<td>".concat(item.name || '', "</td>\n\t\t\t\t\t<td>").concat(value, "</td>\n\t\t\t\t</tr>\n\t\t\t");
+      tooltipContentTable.append("\n\t\t\t\t<tr>\n\t\t\t\t\t<td>".concat(item.name || '', "</td>\n\t\t\t\t\t<td>").concat(value, "</td>\n\t\t\t\t</tr>\n\t\t\t"));
     });
-    tooltipContentTable += '</table>';
     return tooltipContentTable;
   }
 });
@@ -4997,10 +4982,10 @@ var utils_getCountryName = function getCountryName(countryCode) {
 var resetMapZoom = function resetMapZoom(_ref) {
   var mapWrapper = _ref.mapWrapper,
       mapPanZoom = _ref.mapPanZoom;
-  var viewPort = mapWrapper.querySelector('.svg-pan-zoom_viewport');
-  viewPort.style.transition = 'transform .3s';
+  var viewPort = mapWrapper.find('.svg-pan-zoom_viewport');
+  viewPort.css('transition', 'transform .3s');
   setTimeout(function () {
-    return viewPort.style.transition = '';
+    return viewPort.css('transition', '');
   }, 400);
   mapPanZoom.reset();
 }; // Set the disabled statuses for buttons
@@ -5011,28 +4996,17 @@ var setControlStatuses = function setControlStatuses(_ref2) {
       mapPanZoom = _ref2.mapPanZoom,
       minZoom = _ref2.minZoom,
       maxZoom = _ref2.maxZoom;
-  zoomControlIn.classList.remove('svg-map-disabled');
-  zoomControlIn.setAttribute('aria-disabled', 'false');
-  zoomControlOut.classList.remove('svg-map-disabled');
-  zoomControlOut.setAttribute('aria-disabled', 'false');
-
-  if (mapPanZoom.getZoom().toFixed(3) <= minZoom) {
-    zoomControlOut.classList.add('svg-map-disabled');
-    zoomControlOut.setAttribute('aria-disabled', 'true');
-  }
-
-  if (mapPanZoom.getZoom().toFixed(3) >= maxZoom) {
-    zoomControlIn.classList.add('svg-map-disabled');
-    zoomControlIn.setAttribute('aria-disabled', 'true');
-  }
+  zoomControlIn.add(zoomControlOut).removeClass('svg-map-disabled').attr('aria-disabled', 'false');
+  mapPanZoom.getZoom().toFixed(3) <= minZoom && zoomControlOut.addClass('svg-map-disabled').attr('aria-disabled', 'true');
+  mapPanZoom.getZoom().toFixed(3) >= maxZoom && zoomControlIn.addClass('svg-map-disabled').attr('aria-disabled', 'true');
 };
 // CONCATENATED MODULE: ./src/svg-map/tooltip.js
  // Create the tooltip
 
 var tooltip_createTooltip = function createTooltip() {
-  var tooltip = createElement('div', 'svg-map-tooltip', document.body);
-  var tooltipContentContainer = createElement('div', 'svg-map-tooltip-content-wrapper', tooltip);
-  var tooltipPointer = createElement('div', 'svg-map-tooltip-pointer', tooltip);
+  var tooltip = cash_default()('<div class="svg-map-tooltip">').appendTo(document.body);
+  var tooltipContentContainer = cash_default()('<div class="svg-map-tooltip-content-wrapper">').appendTo(tooltip);
+  var tooltipPointer = cash_default()('<div class="svg-map-tooltip-pointer">').appendTo(tooltip);
   return {
     tooltip: tooltip,
     tooltipContentContainer: tooltipContentContainer,
@@ -5041,7 +5015,7 @@ var tooltip_createTooltip = function createTooltip() {
 }; // Hide the tooltip
 
 var hideTooltip = function hideTooltip(tooltip) {
-  return tooltip.classList.remove('svg-map-active');
+  return tooltip.removeClass('svg-map-active');
 }; // Move the tooltip
 
 var moveTooltip = function moveTooltip(event, _ref) {
@@ -5055,46 +5029,45 @@ var moveTooltip = function moveTooltip(event, _ref) {
     var offsetToPointer = 12;
     var offsetToPointerFlipped = 32;
     var wWidth = window.innerWidth;
-    var tWidth = tooltip.offsetWidth;
-    var tHeight = tooltip.offsetHeight; // Adjust pointer when reaching window sides
+    var tWidth = tooltip[0].offsetWidth;
+    var tHeight = tooltip[0].offsetHeight; // Adjust pointer when reaching window sides
 
     var left = x - tWidth / 2;
 
     if (left <= offsetToWindow) {
       x = offsetToWindow + tWidth / 2;
-      tooltipPointer.style.marginLeft = left - offsetToWindow + 'px';
+      tooltipPointer.css('margin-left', left - offsetToWindow);
     } else if (left + tWidth >= wWidth - offsetToWindow) {
       x = wWidth - offsetToWindow - tWidth / 2;
-      tooltipPointer.style.marginLeft = (wWidth - offsetToWindow - event.pageX - tWidth / 2) * -1 + 'px';
+      tooltipPointer.css('margin-left', (wWidth - offsetToWindow - event.pageX - tWidth / 2) * -1);
     } else {
-      tooltipPointer.style.marginLeft = '0px';
+      tooltipPointer.css('margin-left', 0);
     } // Flip tooltip when reaching top window edge
 
 
     var top = y - offsetToPointer - tHeight;
 
     if (top <= offsetToWindow) {
-      tooltip.classList.add('svg-map-tooltip-flipped');
+      tooltip.addClass('svg-map-tooltip-flipped');
       y += offsetToPointerFlipped;
     } else {
-      tooltip.classList.remove('svg-map-tooltip-flipped');
+      tooltip.removeClass('svg-map-tooltip-flipped');
       y -= offsetToPointer;
     }
 
-    tooltip.style.left = x + 'px';
-    tooltip.style.top = y + 'px';
+    tooltip.css('left', x);
+    tooltip.css('top', y);
   }
 }; // Set the tooltips content
 
 var setTooltipContent = function setTooltipContent(tooltipContent, content) {
-  tooltipContent.innerHTML = '';
-  tooltipContent.append(content);
+  tooltipContent.empty().append(content);
 }; // Show the tooltip
 
 var showTooltip = function showTooltip(event, _ref2) {
   var tooltip = _ref2.tooltip,
       tooltipPointer = _ref2.tooltipPointer;
-  tooltip.classList.add('svg-map-active');
+  tooltip.addClass('svg-map-active');
   moveTooltip(event, {
     tooltip: tooltip,
     tooltipPointer: tooltipPointer
@@ -5155,38 +5128,37 @@ var src_SVGMap = /*#__PURE__*/function () {
       if (!options.targetElement) throw new TypeError('Target element not found');
     }
 
-    this.options = _objectSpread(_objectSpread({}, default_options), options); // Cache wrapper element
-
+    this.options = _objectSpread(_objectSpread({}, default_options), options);
     var container = this.options.targetElementID ? document.getElementById(this.options.targetElementID) : this.options.targetElement; // Create the map
     // Create the tooltip content
 
     var getTooltipContent = function getTooltipContent(countryCode) {
-      var tooltipContentWrapper = createElement('div', 'svg-map-tooltip-content-container');
+      var tooltipContentWrapper = cash_default()('<div class="svg-map-tooltip-content-container">');
 
       if (_this.options.hideFlag === false) {
         // Flag
-        var flagContainer = createElement('div', 'svg-map-tooltip-flag-container svg-map-tooltip-flag-container-' + _this.options.flagType, tooltipContentWrapper);
+        var flagContainer = cash_default()("<div class=\"svg-map-tooltip-flag-container svg-map-tooltip-flag-container-".concat(_this.options.flagType, "\">")).appendTo(tooltipContentWrapper);
 
         switch (_this.options.flagType) {
           case "image":
-            createElement('img', 'svg-map-tooltip-flag', flagContainer).setAttribute('src', _this.options.flagURL.replace('{0}', countryCode.toLowerCase()));
+            flagContainer.append(cash_default()('<img class="svg-map-tooltip-flag">').attr('src', _this.options.flagURL.replace('{0}', countryCode.toLowerCase())));
             break;
 
           case "emoji":
-            flagContainer.innerHTML = emoji_flags[countryCode];
+            flagContainer.html(emoji_flags[countryCode]);
             break;
         }
       } // Title
 
 
-      createElement('div', 'svg-map-tooltip-title', tooltipContentWrapper).innerHTML = utils_getCountryName(countryCode, _this.options.countryNames); // Content
+      tooltipContentWrapper.append(cash_default()('<div class="svg-map-tooltip-title">').html(utils_getCountryName(countryCode, _this.options.countryNames))); // Content
 
-      var tooltipContent = createElement('div', 'svg-map-tooltip-content', tooltipContentWrapper);
+      var tooltipContent = cash_default()('<div class="svg-map-tooltip-content">').appendTo(tooltipContentWrapper);
 
       if (_this.options.data && _this.options.data.values[countryCode]) {
-        cash_default()(tooltipContent).append(_this.options.getTooltipContent(_this.options.data.data, _this.options.data.values, countryCode));
+        tooltipContent.append(_this.options.getTooltipContent(_this.options.data.data, _this.options.data.values, countryCode));
       } else {
-        createElement('div', 'svg-map-tooltip-no-data', tooltipContent).innerHTML = _this.options.noDataText;
+        tooltipContent.append(cash_default()('<div class="svg-map-tooltip-no-data">').html(_this.options.noDataText));
       }
 
       return tooltipContentWrapper;
@@ -5194,7 +5166,7 @@ var src_SVGMap = /*#__PURE__*/function () {
 
 
     var zoomMap = function zoomMap(buttonControl, direction) {
-      if (buttonControl.classList.contains('svg-map-disabled')) return false;
+      if (buttonControl.hasClass('svg-map-disabled')) return false;
 
       _this.panZoom[direction == 'in' ? 'zoomIn' : 'zoomOut']();
     }; // Create the tooltip
@@ -5206,26 +5178,26 @@ var src_SVGMap = /*#__PURE__*/function () {
         tooltipPointer = _createTooltip.tooltipPointer; // Create map wrappers
 
 
-    this.wrapper = createElement('div', 'svg-map-wrapper', container);
+    this.wrapper = cash_default()('<div class="svg-map-wrapper">').appendTo(container);
     var mapImage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     mapImage.setAttribute('viewBox', '0 0 2000 1001');
     mapImage.classList.add('svg-map-image');
-    this.wrapper.appendChild(mapImage); // Add controls
+    this.wrapper.append(mapImage); // Add controls
 
-    var mapControlsWrapper = createElement('div', 'svg-map-controls-wrapper', this.wrapper);
-    var zoomContainer = createElement('div', 'svg-map-controls-zoom', mapControlsWrapper);
-    var zoomControlIn = createElement('button', "svg-map-control-button svg-map-zoom-button svg-map-zoom-in-button", zoomContainer);
-    var zoomControlOut = createElement('button', "svg-map-control-button svg-map-zoom-button svg-map-zoom-out-button", zoomContainer);
+    var mapControlsWrapper = cash_default()('<div class="svg-map-controls-wrapper">').appendTo(this.wrapper);
+    var zoomContainer = cash_default()('<div class="svg-map-controls-zoom">').appendTo(mapControlsWrapper);
+    var zoomControlIn = cash_default()('<button class="svg-map-control-button svg-map-zoom-button svg-map-zoom-in-button">').appendTo(zoomContainer);
+    var zoomControlOut = cash_default()('<button class="svg-map-control-button svg-map-zoom-button svg-map-zoom-out-button">').appendTo(zoomContainer);
     [[zoomControlIn, 'in'], [zoomControlOut, 'out']].forEach(function (_ref) {
       var _ref2 = _slicedToArray(_ref, 2),
           buttonControl = _ref2[0],
           direction = _ref2[1];
 
       buttonControl.type = 'button';
-      buttonControl.addEventListener('click', function () {
+      buttonControl.on('click', function () {
         return zoomMap(buttonControl, direction);
       });
-      zoomControlIn.setAttribute('aria-label', "Zoom ".concat(direction));
+      buttonControl.attr('aria-label', "Zoom ".concat(direction));
     }); // Fix countries
 
     var localMapPaths = _objectSpread({}, map_paths);
@@ -5363,7 +5335,7 @@ var src_SVGMap = /*#__PURE__*/function () {
       data.data[data.applyData].thresholdMin && (min = Math.max(min, data.data[data.applyData].thresholdMin)); // Loop through countries and set colors
 
       Object.keys(countries).forEach(function (countryCode) {
-        var element = _this2.wrapper.querySelector("[data-id=\"".concat(countryCode, "\"]"));
+        var element = _this2.wrapper.find("[data-id=\"".concat(countryCode, "\"]"))[0];
 
         if (!element) return;
 
@@ -5379,13 +5351,13 @@ var src_SVGMap = /*#__PURE__*/function () {
       });
 
       if (this.options.fitToData) {
-        var _this$wrapper = this.wrapper,
-            mapWidth = _this$wrapper.offsetWidth,
-            mapHeight = _this$wrapper.offsetHeight;
+        var _this$wrapper$ = this.wrapper[0],
+            mapWidth = _this$wrapper$.offsetWidth,
+            mapHeight = _this$wrapper$.offsetHeight;
         var scaleFactor = mapWidth / (mapWidth > mapHeight ? 2000 : 1001);
         var mapCenterPoint = [mapWidth / 2, mapHeight / 2];
         var points = Object.keys(data.values).map(function (countryCode) {
-          return _this2.wrapper.querySelector("[data-id=\"".concat(countryCode, "\"]"));
+          return _this2.wrapper.find("[data-id=\"".concat(countryCode, "\"]"))[0];
         }).filter(function (path) {
           return path != null;
         }).reduce(function (accumulator, path) {
