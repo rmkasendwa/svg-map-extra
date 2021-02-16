@@ -4041,6 +4041,8 @@ var utils_getCountryName = function getCountryName(countryCode) {
   targetElementID: '',
   // The element to render the map in
   targetElement: null,
+  // The element to attach tooltips
+  rootElement: null,
   // Minimum and maximum zoom
   minZoom: 1,
   maxZoom: 25,
@@ -4068,7 +4070,7 @@ var utils_getCountryName = function getCountryName(countryCode) {
     EH: true
   },
   // Get country tooltip content
-  getTooltipContent: function getTooltipContent(schema, values, countryCode) {
+  getTooltipContent: function getTooltipContent(countryCode, schema, values) {
     var tooltipContentTable = cash_default()('<table class="svg-map-tooltip-content-table">');
     Object.keys(schema).forEach(function (key) {
       var value = values[countryCode][key];
@@ -5003,8 +5005,8 @@ var setControlStatuses = function setControlStatuses(_ref2) {
 // CONCATENATED MODULE: ./src/svg-map/tooltip.js
  // Create the tooltip
 
-var tooltip_createTooltip = function createTooltip() {
-  var tooltip = cash_default()('<div class="svg-map-tooltip">').appendTo(document.body);
+var tooltip_createTooltip = function createTooltip(rootElement) {
+  var tooltip = cash_default()('<div class="svg-map-tooltip">').appendTo(rootElement || document.body);
   var tooltipContentContainer = cash_default()('<div class="svg-map-tooltip-content-wrapper">').appendTo(tooltip);
   var tooltipPointer = cash_default()('<div class="svg-map-tooltip-pointer">').appendTo(tooltip);
   return {
@@ -5156,7 +5158,9 @@ var src_SVGMap = /*#__PURE__*/function () {
       var tooltipContent = cash_default()('<div class="svg-map-tooltip-content">').appendTo(tooltipContentWrapper);
 
       if (_this.options.data && _this.options.data.values[countryCode]) {
-        tooltipContent.append(_this.options.getTooltipContent(_this.options.data.data, _this.options.data.values, countryCode));
+        var tooltipContentBody = _this.options.getTooltipContent(countryCode, _this.options.data.schema, _this.options.data.values);
+
+        typeof tooltipContentBody === "string" ? tooltipContent.html(tooltipContentBody) : tooltipContent.append(tooltipContentBody);
       } else {
         tooltipContent.append(cash_default()('<div class="svg-map-tooltip-no-data">').html(_this.options.noDataText));
       }
@@ -5172,7 +5176,7 @@ var src_SVGMap = /*#__PURE__*/function () {
     }; // Create the tooltip
 
 
-    var _createTooltip = tooltip_createTooltip(),
+    var _createTooltip = tooltip_createTooltip(this.options.rootElement),
         tooltip = _createTooltip.tooltip,
         tooltipContentContainer = _createTooltip.tooltipContentContainer,
         tooltipPointer = _createTooltip.tooltipPointer; // Create map wrappers
@@ -5331,8 +5335,8 @@ var src_SVGMap = /*#__PURE__*/function () {
         value > max && (max = value);
         value < min && (min = value);
       });
-      data.data[data.applyData].thresholdMax && (max = Math.min(max, data.data[data.applyData].thresholdMax));
-      data.data[data.applyData].thresholdMin && (min = Math.max(min, data.data[data.applyData].thresholdMin)); // Loop through countries and set colors
+      data.schema[data.applyData].thresholdMax && (max = Math.min(max, data.schema[data.applyData].thresholdMax));
+      data.schema[data.applyData].thresholdMin && (min = Math.max(min, data.schema[data.applyData].thresholdMin)); // Loop through countries and set colors
 
       Object.keys(countries).forEach(function (countryCode) {
         var element = _this2.wrapper.find("[data-id=\"".concat(countryCode, "\"]"))[0];
@@ -5397,10 +5401,7 @@ var src_SVGMap = /*#__PURE__*/function () {
             return a.absoluteCoordinates;
           })));
         }, []);
-        resetMapZoom({
-          mapWrapper: this.wrapper,
-          mapPanZoom: this.panZoom
-        });
+        this.resetTransformations();
 
         if (points.length > 0) {
           var minX = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref3) {
@@ -5438,6 +5439,14 @@ var src_SVGMap = /*#__PURE__*/function () {
           this.panZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
         }
       }
+    }
+  }, {
+    key: "resetTransformations",
+    value: function resetTransformations() {
+      resetMapZoom({
+        mapWrapper: this.wrapper,
+        mapPanZoom: this.panZoom
+      });
     }
   }]);
 

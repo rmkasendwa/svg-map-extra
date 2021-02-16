@@ -39,7 +39,8 @@ export default class SVGMap {
 			// Content
 			const tooltipContent = $('<div class="svg-map-tooltip-content">').appendTo(tooltipContentWrapper);
 			if (this.options.data && this.options.data.values[countryCode]) {
-				tooltipContent.append(this.options.getTooltipContent(this.options.data.data, this.options.data.values, countryCode));
+				const tooltipContentBody = this.options.getTooltipContent(countryCode, this.options.data.schema, this.options.data.values);
+				typeof tooltipContentBody === "string" ? tooltipContent.html(tooltipContentBody) : tooltipContent.append(tooltipContentBody);
 			} else {
 				tooltipContent.append($('<div class="svg-map-tooltip-no-data">').html(this.options.noDataText));
 			}
@@ -53,7 +54,7 @@ export default class SVGMap {
 		};
 
 		// Create the tooltip
-		const { tooltip, tooltipContentContainer, tooltipPointer } = createTooltip();
+		const { tooltip, tooltipContentContainer, tooltipPointer } = createTooltip(this.options.rootElement);
 
 		// Create map wrappers
 		this.wrapper = $('<div class="svg-map-wrapper">').appendTo(container);
@@ -172,8 +173,8 @@ export default class SVGMap {
 			value < min && (min = value);
 		});
 
-		data.data[data.applyData].thresholdMax && (max = Math.min(max, data.data[data.applyData].thresholdMax));
-		data.data[data.applyData].thresholdMin && (min = Math.max(min, data.data[data.applyData].thresholdMin));
+		data.schema[data.applyData].thresholdMax && (max = Math.min(max, data.schema[data.applyData].thresholdMax));
+		data.schema[data.applyData].thresholdMin && (min = Math.max(min, data.schema[data.applyData].thresholdMin));
 
 		// Loop through countries and set colors
 		Object.keys(countries).forEach(countryCode => {
@@ -217,7 +218,7 @@ export default class SVGMap {
 				});
 				return [...accumulator, ...pathDefinition.map(a => a.absoluteCoordinates)];
 			}, []);
-			resetMapZoom({ mapWrapper: this.wrapper, mapPanZoom: this.panZoom });
+			this.resetTransformations();
 			if (points.length > 0) {
 				const minX = Math.min(...points.map(([x]) => x));
 				const minY = Math.min(...points.map(([, y]) => y));
@@ -231,5 +232,8 @@ export default class SVGMap {
 				this.panZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
 			}
 		}
+	}
+	resetTransformations() {
+		resetMapZoom({ mapWrapper: this.wrapper, mapPanZoom: this.panZoom });
 	}
 }

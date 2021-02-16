@@ -8,6 +8,9 @@ export default {
 	// The element to render the map in
 	targetElement: null,
 
+	// The element on which the tooltips will be attached
+	rootElement: null,
+
 	// Minimum and maximum zoom
 	minZoom: 1,
 	maxZoom: 25,
@@ -45,7 +48,7 @@ export default {
 	},
 
 	// Get country tooltip content
-	getTooltipContent: (schema, values, countryCode) => {
+	getTooltipContent: (countryCode, schema, values) => {
 		let tooltipContentTable = $('<table class="svg-map-tooltip-content-table">');
 		Object.keys(schema).forEach(key => {
 			let value = values[countryCode][key];

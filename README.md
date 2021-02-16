@@ -21,7 +21,7 @@ Include or require `svg-map-extra.min.js` and you are ready to go:
 new SVGMap({
     targetElement: document.querySelector('.map-target'),
     data: {
-        data: {
+        schema: {
             gdp: {
                 name: 'GDP per capita',
                 format: '{0} USD',
@@ -49,9 +49,11 @@ new SVGMap({
 
 You can pass the following options into SVGMap:
 
-* `targetElement` (`string`) The html element where the world map will render (Required)
+* `targetElement` (`HTMLElement`) The html element where the world map will render (Required)
 
 * `targetElementID` (`string`) The ID of the element where the world map will render (Required if targetElement is not provided)
+
+* `rootElement` (`HTMLElement`) The html element where the map tooltip will be attached
 
 * `minZoom`, `maxZoom` (`float`) Minimal and maximal zoom level. Default: `1` for `minZoom`, `25` for `maxZoom`
 
@@ -75,7 +77,7 @@ You can pass the following options into SVGMap:
 
   * `EH` (`boolean`) When set to `false`, Western Sahara (EH) will be combined with Morocco (MA)
 
-* `data` (`object`) The chart data to use for coloring and to show in the tooltip. Use a unique data-id as key and provide following options as value:
+* `schema` (`object`) The chart data to use for coloring and to show in the tooltip. Use a unique data-id as key and provide following options as value:
 
   * `name` (`string`) The name of the data, it will be shown in the tooltip
 
@@ -101,9 +103,9 @@ To create your own translations, check out [country-list](https://github.com/ump
 
 ## Attribution
 
-If you need more detailed maps or more options for your data, there is a great open source project called [datawrapper](https://github.com/datawrapper/datawrapper) out there, with a lot more power than svgMap.
+If you need more detailed maps or more options for your data, there is a great open source project called [datawrapper](https://github.com/datawrapper/datawrapper) out there, with a lot more power than svg-map-extra.
 
-svgMap uses [svg-pan-zoom](https://github.com/ariutta/svg-pan-zoom) by [Anders Riutta](https://github.com/ariutta).
+svg-map-extra uses [svg-pan-zoom](https://github.com/ariutta/svg-pan-zoom) by [Anders Riutta](https://github.com/ariutta).
 
 The country flag images are from [country-flags](https://github.com/hjnilsson/country-flags) by [Hampus Nilsson](https://github.com/hjnilsson).
 

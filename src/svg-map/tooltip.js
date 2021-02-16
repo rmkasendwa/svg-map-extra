@@ -1,8 +1,8 @@
 import $ from 'cash-dom';
 
 // Create the tooltip
-export const createTooltip = () => {
-	const tooltip = $('<div class="svg-map-tooltip">').appendTo(document.body);
+export const createTooltip = rootElement => {
+	const tooltip = $('<div class="svg-map-tooltip">').appendTo(rootElement || document.body);
 	const tooltipContentContainer = $('<div class="svg-map-tooltip-content-wrapper">').appendTo(tooltip);
 	const tooltipPointer = $('<div class="svg-map-tooltip-pointer">').appendTo(tooltip);
 	return { tooltip, tooltipContentContainer, tooltipPointer };
