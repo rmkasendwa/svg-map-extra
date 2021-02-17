@@ -1,8 +1,9 @@
 {
 	"name": "svg-map-extra",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "svg-map-extra is an extended JavaScript library that lets you easily create an interactable world map comparing customizable data for each country inspired by the original svgMap.",
-	"main": "src/index.js",
+	"main": "dist/svg-map.js",
+	"module": "src/index.js",
 	"scripts": {
 		"start": "webpack-dev-server --output-public-path=/demo/  --mode development --progress --open --hot",
 		"build": "webpack --mode production --progress",

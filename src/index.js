@@ -94,12 +94,9 @@ export default class SVGMap {
 
 			['mouseenter', 'touchdown'].forEach(event => countryElement.addEventListener(event, () => countryElement.closest('g').appendChild(countryElement)));
 
-			// TODO Tooltip events
-			// Make Country fixed on click
-			/* countryElement.addEventListener('click', () => {
-			  const countryCode = countryElement.getAttribute('data-id');
-			  console.log(countryCode);
-			});*/
+			countryElement.addEventListener('click', event => {
+				typeof this.options.onClick === "function" && this.options.onClick.call(countryElement, countryCode, event);
+			});
 
 			// Tooltip events
 			// Add tooltip when touch is used
@@ -150,6 +147,7 @@ export default class SVGMap {
 
 		// Init pan zoom
 		this.panZoom.zoom(this.options.initialZoom);
+		this.panZoom.initialLoad = true;
 
 		// Initial zoom statuses
 		setControlStatuses({ mapPanZoom: this.panZoom, maxZoom: this.options.maxZoom, minZoom: this.options.minZoom, zoomControlIn: zoomControlIn, zoomControlOut: zoomControlOut });

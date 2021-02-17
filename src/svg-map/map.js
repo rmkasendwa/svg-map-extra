@@ -1,8 +1,11 @@
 // Reset map
 export const resetMapZoom = ({ mapWrapper, mapPanZoom }) => {
-	const viewPort = mapWrapper.find('.svg-pan-zoom_viewport');
-	viewPort.css('transition', 'transform .3s');
-	setTimeout(() => viewPort.css('transition', ''), 400);
+	if (!mapPanZoom.initialLoad) {
+		const viewPort = mapWrapper.find('.svg-pan-zoom_viewport').css('transition', 'transform .3s');
+		setTimeout(() => viewPort.css('transition', ''), 400);
+	} else {
+		delete mapPanZoom.initialLoad;
+	}
 	mapPanZoom.reset();
 };
 

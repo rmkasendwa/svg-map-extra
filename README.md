@@ -95,6 +95,12 @@ You can pass the following options into SVGMap:
 
 * `countryNames` (`object`) An object with the [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) country code as key and the country name as value
 
+* `onClick` (`Function`) A callback function that will be executed when a map path is clicked. This function expects at most the `countryCode` and `event`. The `this` keyword in the context of this function is the target svg path of the clicked country.
+
+  * `countryCode` (`string`) The countryCode of the clicked country e.g UG
+
+  * `event` (`Event`) The click event object
+
 ## Localize
 
 Use the option `countryNames` to translate country names. In the folder `local` you can find translations in following languages: Arabic, Chinese, English, French, German, Hindi, Portuguese, Russian, Spanish, Urdu

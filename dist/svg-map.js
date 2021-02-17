@@ -4041,7 +4041,7 @@ var utils_getCountryName = function getCountryName(countryCode) {
   targetElementID: '',
   // The element to render the map in
   targetElement: null,
-  // The element to attach tooltips
+  // The element on which the tooltips will be attached
   rootElement: null,
   // Minimum and maximum zoom
   minZoom: 1,
@@ -4984,11 +4984,16 @@ var utils_getCountryName = function getCountryName(countryCode) {
 var resetMapZoom = function resetMapZoom(_ref) {
   var mapWrapper = _ref.mapWrapper,
       mapPanZoom = _ref.mapPanZoom;
-  var viewPort = mapWrapper.find('.svg-pan-zoom_viewport');
-  viewPort.css('transition', 'transform .3s');
-  setTimeout(function () {
-    return viewPort.css('transition', '');
-  }, 400);
+
+  if (!mapPanZoom.initialLoad) {
+    var viewPort = mapWrapper.find('.svg-pan-zoom_viewport').css('transition', 'transform .3s');
+    setTimeout(function () {
+      return viewPort.css('transition', '');
+    }, 400);
+  } else {
+    delete mapPanZoom.initialLoad;
+  }
+
   mapPanZoom.reset();
 }; // Set the disabled statuses for buttons
 
@@ -5225,14 +5230,10 @@ var src_SVGMap = /*#__PURE__*/function () {
         return countryElement.addEventListener(event, function () {
           return countryElement.closest('g').appendChild(countryElement);
         });
-      }); // TODO Tooltip events
-      // Make Country fixed on click
-
-      /* countryElement.addEventListener('click', () => {
-        const countryCode = countryElement.getAttribute('data-id');
-        console.log(countryCode);
-      });*/
-      // Tooltip events
+      });
+      countryElement.addEventListener('click', function (event) {
+        typeof _this.options.onClick === "function" && _this.options.onClick.call(countryElement, countryCode, event);
+      }); // Tooltip events
       // Add tooltip when touch is used
 
       countryElement.addEventListener('touchstart', function (event) {
@@ -5303,7 +5304,8 @@ var src_SVGMap = /*#__PURE__*/function () {
       }
     }); // Init pan zoom
 
-    this.panZoom.zoom(this.options.initialZoom); // Initial zoom statuses
+    this.panZoom.zoom(this.options.initialZoom);
+    this.panZoom.initialLoad = true; // Initial zoom statuses
 
     setControlStatuses({
       mapPanZoom: this.panZoom,
