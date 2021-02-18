@@ -4014,18 +4014,23 @@ var numberWithCommas = function numberWithCommas(number) {
   return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, separator);
 }; // Get a color between two other colors
 
-var getColor = function getColor(color1, color2, ratio) {
-  color1 = color1.slice(-6);
-  color2 = color2.slice(-6);
-  var r = Math.ceil(parseInt(color1.substring(0, 2), 16) * ratio + parseInt(color2.substring(0, 2), 16) * (1 - ratio));
-  var g = Math.ceil(parseInt(color1.substring(2, 4), 16) * ratio + parseInt(color2.substring(2, 4), 16) * (1 - ratio));
-  var b = Math.ceil(parseInt(color1.substring(4, 6), 16) * ratio + parseInt(color2.substring(4, 6), 16) * (1 - ratio));
+var getColor = function getColor(colorMax, colorMin, ratio) {
+  colorMax = colorMax.slice(1);
+  colorMin = colorMin.slice(1);
+  colorMax.length === 3 && (colorMax = colorMax.split('').map(function (a) {
+    return a + a;
+  }).join(''));
+  colorMin.length === 3 && (colorMin = colorMin.split('').map(function (a) {
+    return a + a;
+  }).join(''));
+  var r = Math.ceil(parseInt(colorMax.substring(0, 2), 16) * ratio + parseInt(colorMin.substring(0, 2), 16) * (1 - ratio));
+  var g = Math.ceil(parseInt(colorMax.substring(2, 4), 16) * ratio + parseInt(colorMin.substring(2, 4), 16) * (1 - ratio));
+  var b = Math.ceil(parseInt(colorMax.substring(4, 6), 16) * ratio + parseInt(colorMin.substring(4, 6), 16) * (1 - ratio));
   return '#' + getHex(r) + getHex(g) + getHex(b);
 }; // Get a hex value
 
 var getHex = function getHex(value) {
-  value = value.toString(16);
-  return ('0' + value).slice(-2);
+  return ('0' + value.toString(16)).slice(-2);
 }; // Get the name of a country by its ID
 
 var utils_getCountryName = function getCountryName(countryCode) {
@@ -4986,9 +4991,11 @@ var resetMapZoom = function resetMapZoom(_ref) {
       mapPanZoom = _ref.mapPanZoom;
 
   if (!mapPanZoom.initialLoad) {
+    clearTimeout(mapPanZoom.transitionResetTimeout);
     var viewPort = mapWrapper.find('.svg-pan-zoom_viewport').css('transition', 'transform .3s');
-    setTimeout(function () {
-      return viewPort.css('transition', '');
+    mapPanZoom.transitionResetTimeout = setTimeout(function () {
+      viewPort.css('transition', '');
+      delete mapPanZoom.transitionResetTimeout;
     }, 400);
   } else {
     delete mapPanZoom.initialLoad;
@@ -5233,11 +5240,17 @@ var src_SVGMap = /*#__PURE__*/function () {
       });
       countryElement.addEventListener('click', function (event) {
         typeof _this.options.onClick === "function" && _this.options.onClick.call(countryElement, countryCode, event);
-      }); // Tooltip events
+      });
+
+      var updateTooltip = function updateTooltip() {
+        setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+        _this.updateTooltip = updateTooltip;
+      }; // Tooltip events
       // Add tooltip when touch is used
 
+
       countryElement.addEventListener('touchstart', function (event) {
-        setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+        updateTooltip();
         showTooltip(event, {
           tooltip: tooltip,
           tooltipPointer: tooltipPointer
@@ -5248,7 +5261,7 @@ var src_SVGMap = /*#__PURE__*/function () {
         });
       });
       countryElement.addEventListener('mouseenter', function (event) {
-        setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+        updateTooltip();
         showTooltip(event, {
           tooltip: tooltip,
           tooltipPointer: tooltipPointer
@@ -5259,7 +5272,7 @@ var src_SVGMap = /*#__PURE__*/function () {
           tooltip: tooltip,
           tooltipPointer: tooltipPointer
         });
-      }); // Hide tooltip when event is mouseleav or touchend
+      }); // Hide tooltip when event is mouseleave or touchend
 
       ['mouseleave', 'touchend'].forEach(function (event) {
         return countryElement.addEventListener(event, function () {
@@ -5327,33 +5340,38 @@ var src_SVGMap = /*#__PURE__*/function () {
     value: function applyData(data) {
       var _this2 = this;
 
-      this.options.data = data;
-      var min, max; // Get highest and lowest value
+      this.options.data = data; // Get highest and lowest value
 
-      Object.keys(data.values).forEach(function (countryCode) {
-        var value = parseInt(data.values[countryCode][data.applyData], 10);
-        max == null && (max = value);
-        min == null && (min = value);
-        value > max && (max = value);
-        value < min && (min = value);
+      var values = Object.keys(data.values).filter(function (countryCode) {
+        return typeof data.values[countryCode][data.applyData] === "number";
+      }).map(function (countryCode) {
+        return data.values[countryCode][data.applyData];
       });
+      var min = Math.min.apply(Math, _toConsumableArray(values));
+      var max = Math.max.apply(Math, _toConsumableArray(values));
       data.schema[data.applyData].thresholdMax && (max = Math.min(max, data.schema[data.applyData].thresholdMax));
       data.schema[data.applyData].thresholdMin && (min = Math.max(min, data.schema[data.applyData].thresholdMin)); // Loop through countries and set colors
 
-      Object.keys(countries).forEach(function (countryCode) {
-        var element = _this2.wrapper.find("[data-id=\"".concat(countryCode, "\"]"))[0];
+      Object.keys(countries).map(function (countryCode) {
+        return [_this2.wrapper.find("[data-id=\"".concat(countryCode, "\"]"))[0], countryCode];
+      }).filter(function (_ref3) {
+        var _ref4 = _slicedToArray(_ref3, 1),
+            path = _ref4[0];
 
-        if (!element) return;
+        return path != null;
+      }).forEach(function (_ref5) {
+        var _ref6 = _slicedToArray(_ref5, 2),
+            path = _ref6[0],
+            countryCode = _ref6[1];
 
-        if (!data.values[countryCode]) {
-          element.setAttribute('fill', _this2.options.colorNoData);
-          return;
+        if (data.values[countryCode]) {
+          var value = Math.max(min, parseInt(data.values[countryCode][data.applyData], 10));
+          var ratio = max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
+          var color = getColor(_this2.options.colorMax, _this2.options.colorMin, ratio);
+          return path.setAttribute('fill', color);
         }
 
-        var value = Math.max(min, parseInt(data.values[countryCode][data.applyData], 10));
-        var ratio = max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
-        var color = getColor(_this2.options.colorMax, _this2.options.colorMin, ratio);
-        element.setAttribute('fill', color);
+        path.setAttribute('fill', _this2.options.colorNoData);
       });
 
       if (this.options.fitToData) {
@@ -5406,27 +5424,27 @@ var src_SVGMap = /*#__PURE__*/function () {
         this.resetTransformations();
 
         if (points.length > 0) {
-          var minX = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref3) {
-            var _ref4 = _slicedToArray(_ref3, 1),
-                x = _ref4[0];
-
-            return x;
-          })));
-          var minY = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref5) {
-            var _ref6 = _slicedToArray(_ref5, 2),
-                y = _ref6[1];
-
-            return y;
-          })));
-          var maxX = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref7) {
+          var minX = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref7) {
             var _ref8 = _slicedToArray(_ref7, 1),
                 x = _ref8[0];
 
             return x;
           })));
-          var maxY = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref9) {
+          var minY = Math.min.apply(Math, _toConsumableArray(points.map(function (_ref9) {
             var _ref10 = _slicedToArray(_ref9, 2),
                 y = _ref10[1];
+
+            return y;
+          })));
+          var maxX = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref11) {
+            var _ref12 = _slicedToArray(_ref11, 1),
+                x = _ref12[0];
+
+            return x;
+          })));
+          var maxY = Math.max.apply(Math, _toConsumableArray(points.map(function (_ref13) {
+            var _ref14 = _slicedToArray(_ref13, 2),
+                y = _ref14[1];
 
             return y;
           })));
@@ -5441,6 +5459,8 @@ var src_SVGMap = /*#__PURE__*/function () {
           this.panZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
         }
       }
+
+      typeof this.updateTooltip === "function" && this.updateTooltip();
     }
   }, {
     key: "resetTransformations",

@@ -98,22 +98,27 @@ export default class SVGMap {
 				typeof this.options.onClick === "function" && this.options.onClick.call(countryElement, countryCode, event);
 			});
 
+			const updateTooltip = () => {
+				setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+				this.updateTooltip = updateTooltip;
+			};
+
 			// Tooltip events
 			// Add tooltip when touch is used
 			countryElement.addEventListener('touchstart', event => {
-				setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+				updateTooltip();
 				showTooltip(event, { tooltip, tooltipPointer });
 				moveTooltip(event, { tooltip, tooltipPointer });
 			});
 
 			countryElement.addEventListener('mouseenter', event => {
-				setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
+				updateTooltip();
 				showTooltip(event, { tooltip, tooltipPointer });
 			});
 
 			countryElement.addEventListener('mousemove', event => moveTooltip(event, { tooltip, tooltipPointer }));
 
-			// Hide tooltip when event is mouseleav or touchend
+			// Hide tooltip when event is mouseleave or touchend
 			['mouseleave', 'touchend'].forEach(event => countryElement.addEventListener(event, () => hideTooltip(tooltip)));
 
 		});
@@ -144,7 +149,6 @@ export default class SVGMap {
 			}
 		});
 
-
 		// Init pan zoom
 		this.panZoom.zoom(this.options.initialZoom);
 		this.panZoom.initialLoad = true;
@@ -160,32 +164,30 @@ export default class SVGMap {
 	}
 	applyData(data) {
 		this.options.data = data;
-		let min, max;
 
 		// Get highest and lowest value
-		Object.keys(data.values).forEach(countryCode => {
-			const value = parseInt(data.values[countryCode][data.applyData], 10);
-			max == null && (max = value);
-			min == null && (min = value);
-			value > max && (max = value);
-			value < min && (min = value);
+		const values = Object.keys(data.values).filter(countryCode => {
+			return typeof data.values[countryCode][data.applyData] === "number";
+		}).map(countryCode => {
+			return data.values[countryCode][data.applyData];
 		});
+		let min = Math.min(...values);
+		let max = Math.max(...values);
 
 		data.schema[data.applyData].thresholdMax && (max = Math.min(max, data.schema[data.applyData].thresholdMax));
 		data.schema[data.applyData].thresholdMin && (min = Math.max(min, data.schema[data.applyData].thresholdMin));
 
 		// Loop through countries and set colors
-		Object.keys(countries).forEach(countryCode => {
-			const element = this.wrapper.find(`[data-id="${countryCode}"]`)[0];
-			if (!element) return;
-			if (!data.values[countryCode]) {
-				element.setAttribute('fill', this.options.colorNoData);
-				return;
+		Object.keys(countries).map(countryCode => {
+			return [this.wrapper.find(`[data-id="${countryCode}"]`)[0], countryCode];
+		}).filter(([path]) => path != null).forEach(([path, countryCode]) => {
+			if (data.values[countryCode]) {
+				const value = Math.max(min, parseInt(data.values[countryCode][data.applyData], 10));
+				const ratio = max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
+				const color = getColor(this.options.colorMax, this.options.colorMin, ratio);
+				return path.setAttribute('fill', color);
 			}
-			const value = Math.max(min, parseInt(data.values[countryCode][data.applyData], 10));
-			const ratio = max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
-			const color = getColor(this.options.colorMax, this.options.colorMin, ratio);
-			element.setAttribute('fill', color);
+			path.setAttribute('fill', this.options.colorNoData);
 		});
 		if (this.options.fitToData) {
 			const { offsetWidth: mapWidth, offsetHeight: mapHeight } = this.wrapper[0];
@@ -230,6 +232,7 @@ export default class SVGMap {
 				this.panZoom.zoom(Math.round(Math.min(xZoomFactor, yZoomFactor) * .8));
 			}
 		}
+		typeof this.updateTooltip === "function" && this.updateTooltip();
 	}
 	resetTransformations() {
 		resetMapZoom({ mapWrapper: this.wrapper, mapPanZoom: this.panZoom });
