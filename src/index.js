@@ -98,22 +98,22 @@ export default class SVGMap {
 				typeof this.options.onClick === "function" && this.options.onClick.call(countryElement, countryCode, event);
 			});
 
-			const updateTooltip = () => {
+			const updateTooltip = event => {
 				setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
-				this.updateTooltip = updateTooltip;
+				moveTooltip(event, { tooltip, tooltipPointer });
+				this.updateTooltip = () => updateTooltip(event);
 			};
 
 			// Tooltip events
 			// Add tooltip when touch is used
 			countryElement.addEventListener('touchstart', event => {
-				updateTooltip();
 				showTooltip(event, { tooltip, tooltipPointer });
-				moveTooltip(event, { tooltip, tooltipPointer });
+				updateTooltip(event);
 			});
 
 			countryElement.addEventListener('mouseenter', event => {
-				updateTooltip();
 				showTooltip(event, { tooltip, tooltipPointer });
+				updateTooltip(event);
 			});
 
 			countryElement.addEventListener('mousemove', event => moveTooltip(event, { tooltip, tooltipPointer }));
@@ -125,13 +125,9 @@ export default class SVGMap {
 
 		// Init pan zoom
 		this.panZoom = SVGPanZoom(mapImage, {
-			zoomEnabled: true,
-			fit: true,
-			center: true,
 			minZoom: this.options.minZoom,
 			maxZoom: this.options.maxZoom,
 			zoomScaleSensitivity: this.options.zoomScaleSensitivity,
-			controlIconsEnabled: false,
 			mouseWheelZoomEnabled: this.options.mouseWheelZoomEnabled, // TODO Only with key pressed
 			onZoom: () => setControlStatuses({ mapPanZoom: this.panZoom, maxZoom: this.options.maxZoom, minZoom: this.options.minZoom, zoomControlIn: zoomControlIn, zoomControlOut: zoomControlOut }),
 			beforePan: (oldPan, newPan) => {

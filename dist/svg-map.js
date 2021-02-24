@@ -5242,30 +5242,33 @@ var src_SVGMap = /*#__PURE__*/function () {
         typeof _this.options.onClick === "function" && _this.options.onClick.call(countryElement, countryCode, event);
       });
 
-      var updateTooltip = function updateTooltip() {
+      var updateTooltip = function updateTooltip(event) {
         setTooltipContent(tooltipContentContainer, getTooltipContent(countryCode));
-        _this.updateTooltip = updateTooltip;
+        moveTooltip(event, {
+          tooltip: tooltip,
+          tooltipPointer: tooltipPointer
+        });
+
+        _this.updateTooltip = function () {
+          return updateTooltip(event);
+        };
       }; // Tooltip events
       // Add tooltip when touch is used
 
 
       countryElement.addEventListener('touchstart', function (event) {
-        updateTooltip();
         showTooltip(event, {
           tooltip: tooltip,
           tooltipPointer: tooltipPointer
         });
-        moveTooltip(event, {
-          tooltip: tooltip,
-          tooltipPointer: tooltipPointer
-        });
+        updateTooltip(event);
       });
       countryElement.addEventListener('mouseenter', function (event) {
-        updateTooltip();
         showTooltip(event, {
           tooltip: tooltip,
           tooltipPointer: tooltipPointer
         });
+        updateTooltip(event);
       });
       countryElement.addEventListener('mousemove', function (event) {
         return moveTooltip(event, {
@@ -5282,13 +5285,9 @@ var src_SVGMap = /*#__PURE__*/function () {
     }); // Init pan zoom
 
     this.panZoom = browserify_default()(mapImage, {
-      zoomEnabled: true,
-      fit: true,
-      center: true,
       minZoom: this.options.minZoom,
       maxZoom: this.options.maxZoom,
       zoomScaleSensitivity: this.options.zoomScaleSensitivity,
-      controlIconsEnabled: false,
       mouseWheelZoomEnabled: this.options.mouseWheelZoomEnabled,
       // TODO Only with key pressed
       onZoom: function onZoom() {
