@@ -4014,7 +4014,36 @@ var numberWithCommas = function numberWithCommas(number) {
   return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, separator);
 }; // Get a color between two other colors
 
-var getColor = function getColor(colorMax, colorMin, ratio) {
+var getColor = function getColor(colorMax, colorMin, ratio, algorithm) {
+  if (algorithm === "HSL_SHIFT") {
+    if (ratio >= 1) return colorMax;
+    if (ratio <= 0) return colorMin;
+
+    var _hexToHsl = hexToHsl(colorMin),
+        minHueCandidate = _hexToHsl.h,
+        minSaturationCandidate = _hexToHsl.s,
+        minLuminanceCandidate = _hexToHsl.l;
+
+    var _hexToHsl2 = hexToHsl(colorMax),
+        maxHueCandidate = _hexToHsl2.h,
+        maxSaturationCandidate = _hexToHsl2.s,
+        maxLuminanceCandidate = _hexToHsl2.l;
+
+    var minHue = Math.min(minHueCandidate, maxHueCandidate);
+    var maxHue = Math.max(minHueCandidate, maxHueCandidate);
+    var shiftedHue = Math.round(minHue + (maxHue - minHue) * ratio);
+    shiftedHue <= 360 || (shiftedHue = 360);
+    var minSaturation = Math.min(minSaturationCandidate, maxSaturationCandidate);
+    var maxSaturation = Math.max(minSaturationCandidate, maxSaturationCandidate);
+    var shiftedSaturation = Math.round(minSaturation + (maxSaturation - minSaturation) * ratio);
+    shiftedSaturation <= 100 || (shiftedSaturation = 100);
+    var minLuminance = Math.min(minLuminanceCandidate, maxLuminanceCandidate);
+    var maxLuminance = Math.max(minLuminanceCandidate, maxLuminanceCandidate);
+    var shiftedLuminance = Math.round(minLuminance + (maxLuminance - minLuminance) * ratio);
+    shiftedLuminance <= 100 || (shiftedLuminance = 100);
+    return "hsl(".concat(shiftedHue, ",").concat(shiftedSaturation, "%,").concat(shiftedLuminance, "%)");
+  }
+
   colorMax = colorMax.slice(1);
   colorMin = colorMin.slice(1);
   colorMax.length === 3 && (colorMax = colorMax.split('').map(function (a) {
@@ -4023,10 +4052,13 @@ var getColor = function getColor(colorMax, colorMin, ratio) {
   colorMin.length === 3 && (colorMin = colorMin.split('').map(function (a) {
     return a + a;
   }).join(''));
-  var r = Math.ceil(parseInt(colorMax.substring(0, 2), 16) * ratio + parseInt(colorMin.substring(0, 2), 16) * (1 - ratio));
-  var g = Math.ceil(parseInt(colorMax.substring(2, 4), 16) * ratio + parseInt(colorMin.substring(2, 4), 16) * (1 - ratio));
-  var b = Math.ceil(parseInt(colorMax.substring(4, 6), 16) * ratio + parseInt(colorMin.substring(4, 6), 16) * (1 - ratio));
-  return '#' + getHex(r) + getHex(g) + getHex(b);
+  var red = Math.ceil(parseInt(colorMax.substring(0, 2), 16) * ratio + parseInt(colorMin.substring(0, 2), 16) * (1 - ratio));
+  red <= 255 || (red = 255);
+  var green = Math.ceil(parseInt(colorMax.substring(2, 4), 16) * ratio + parseInt(colorMin.substring(2, 4), 16) * (1 - ratio));
+  green <= 255 || (green = 255);
+  var blue = Math.ceil(parseInt(colorMax.substring(4, 6), 16) * ratio + parseInt(colorMin.substring(4, 6), 16) * (1 - ratio));
+  blue <= 255 || (blue = 255);
+  return '#' + getHex(red) + getHex(green) + getHex(blue);
 }; // Get a hex value
 
 var getHex = function getHex(value) {
@@ -4036,6 +4068,51 @@ var getHex = function getHex(value) {
 var utils_getCountryName = function getCountryName(countryCode) {
   var countryNames = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : countries;
   return countryNames[countryCode];
+};
+var hexToHsl = function hexToHsl(hex) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  var r = parseInt(result[1], 16) / 255;
+  var g = parseInt(result[2], 16) / 255;
+  var b = parseInt(result[3], 16) / 255;
+  var max = Math.max(r, g, b);
+  var min = Math.min(r, g, b);
+  var h,
+      s,
+      l = (max + min) / 2;
+
+  if (max == min) {
+    h = s = 0; // achromatic
+  } else {
+    var d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+
+      case g:
+        h = (b - r) / d + 2;
+        break;
+
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+
+    h /= 6;
+  }
+
+  s = s * 100;
+  s = Math.round(s);
+  l = l * 100;
+  l = Math.round(l);
+  h = Math.round(360 * h);
+  return {
+    h: h,
+    s: s,
+    l: l
+  };
 };
 // CONCATENATED MODULE: ./src/svg-map/default-options.js
 
